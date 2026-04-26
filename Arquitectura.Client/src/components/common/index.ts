@@ -1,3 +1,6 @@
 export { ErrorState } from './ErrorState'
 export { EmptyState } from './EmptyState'
 export { LoadingState } from './LoadingState'
+export { Pagination } from './Pagination'
+export { DeleteDialog } from './DeleteDialog'
+export { StatCard } from './StatCard'

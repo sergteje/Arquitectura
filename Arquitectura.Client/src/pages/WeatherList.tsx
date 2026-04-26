@@ -7,7 +7,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components
 import { Plus, Thermometer, Cloud, Wind, Sun } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
-import { StatCard, WeatherRow, EmptyState, LoadingState, ErrorState, WeatherPagination, DeleteDialog } from '@/components/weather'
+import { StatCard, WeatherRow, WeatherEmptyState, LoadingState, ErrorState, WeatherPagination, WeatherDeleteDialog } from '@/components/weather'
 import { COLORS } from '@/lib/constants'
 
 interface WeatherListProps {
@@ -104,7 +104,7 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
 
           <CardContent className="p-0">
             {data.items.length === 0 ? (
-              <EmptyState isDark={isDark} onCreate={onCreate} />
+              <WeatherEmptyState isDark={isDark} onCreate={onCreate} />
             ) : (
               <Table>
                 <TableHeader>
@@ -147,7 +147,7 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
       )}
 
       {/* Delete Dialog */}
-      <DeleteDialog
+      <WeatherDeleteDialog
         isOpen={deleteId !== null}
         isDark={isDark}
         isPending={deleteMutation.isPending}
