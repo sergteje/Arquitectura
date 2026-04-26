@@ -1,14 +1,11 @@
 import { useState } from 'react'
 import { useWeatherForecasts, useDeleteForecast } from '@/services/weatherApi'
 import type { WeatherForecast } from '@/services/weatherApi'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Thermometer, Cloud, Wind, Sun } from 'lucide-react'
+import { Thermometer, Cloud, Wind, Sun } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
-import { StatCard, WeatherRow, WeatherEmptyState, LoadingState, ErrorState, WeatherPagination, WeatherDeleteDialog } from '@/components/weather'
-import { COLORS } from '@/lib/constants'
+import { DataTable, StatsGrid, DeleteDialog, PageHeader } from '@/components/common'
+import { useWeatherColumns } from '@/components/weather/useWeatherColumns'
 
 interface WeatherListProps {
   onCreate: () => void
@@ -22,6 +19,8 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
   const deleteMutation = useDeleteForecast()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+  
+  const columns = useWeatherColumns(isDark)
 
   const handleDelete = (id: number) => setDeleteId(id)
 
@@ -40,114 +39,50 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
     }
   }
 
-  // Stats
-  const avgTemp = data?.items.length 
-    ? Math.round(data.items.reduce((acc, f) => acc + f.temperatureC, 0) / data.items.length)
-    : 0
+  // Stats calculation
+  const stats = data?.items.length 
+    ? [
+        { title: 'Total', value: data.totalCount, icon: Cloud },
+        { title: 'Avg', value: `${Math.round(data.items.reduce((acc, f) => acc + f.temperatureC, 0) / data.items.length)}°C`, icon: Thermometer },
+        { title: 'Warmest', value: `${Math.max(...data.items.map(f => f.temperatureC))}°C`, icon: Sun },
+        { title: 'Coolest', value: `${Math.min(...data.items.map(f => f.temperatureC))}°C`, icon: Wind },
+      ]
+    : []
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className={`text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-950'}`}>
-            Weather Forecasts
-          </h2>
-          <p className={`mt-1 ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>
-            Manage your weather data
-          </p>
-        </div>
-        <Button 
-          onClick={onCreate} 
-          size="lg" 
-          className={`${COLORS.primary.bg} ${COLORS.primary.hover} text-white border-0 shadow-lg shadow-blue-500/30`}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          New Forecast
-        </Button>
-      </div>
+      <PageHeader
+        title="Weather Forecasts"
+        description="Manage your weather data"
+        isDark={isDark}
+      />
 
-      {/* Stats Dashboard */}
+      {/* Stats */}
       {!isLoading && !error && data && data.items.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total" value={data.totalCount} icon={Cloud} isDark={isDark} />
-          <StatCard title="Avg" value={`${avgTemp}°C`} icon={Thermometer} isDark={isDark} />
-          <StatCard title="Warmest" value={`${Math.max(...data.items.map(f => f.temperatureC))}°C`} icon={Sun} isDark={isDark} />
-          <StatCard title="Coolest" value={`${Math.min(...data.items.map(f => f.temperatureC))}°C`} icon={Wind} isDark={isDark} />
-        </div>
+        <StatsGrid stats={stats} isDark={isDark} />
       )}
 
-      {/* Loading */}
-      {isLoading && <LoadingState isDark={isDark} />}
-
-      {/* Error */}
-      {error && <ErrorState isDark={isDark} />}
-
-      {/* Data Table */}
-      {!isLoading && !error && data && (
-        <Card className={`${isDark ? 'bg-white/5 border-white/10' : 'bg-white/95 border-slate-300/50'} overflow-hidden`}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
-                <Thermometer className={`h-5 w-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-              </div>
-              <div>
-                <CardTitle className={`text-lg ${isDark ? 'text-white' : 'text-slate-950'}`}>
-                  Forecast List
-                </CardTitle>
-                <CardDescription className={isDark ? 'text-slate-400' : 'text-slate-700'}>
-                  {data.totalCount} forecast{data.totalCount !== 1 ? 's' : ''} in total
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-0">
-            {data.items.length === 0 ? (
-              <WeatherEmptyState isDark={isDark} onCreate={onCreate} />
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className={`hover:bg-transparent ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
-                    <TableHead className={isDark ? 'text-slate-400' : 'text-slate-700'}>ID</TableHead>
-                    <TableHead className={isDark ? 'text-slate-400' : 'text-slate-700'}>Date</TableHead>
-                    <TableHead className={isDark ? 'text-slate-400' : 'text-slate-700'}>Temp</TableHead>
-                    <TableHead className={isDark ? 'text-slate-400' : 'text-slate-700'}>Summary</TableHead>
-                    <TableHead className={`text-right ${isDark ? 'text-slate-400' : 'text-slate-700'}`}>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.items.map((forecast) => (
-                    <WeatherRow
-                      key={forecast.id}
-                      forecast={forecast}
-                      isDark={isDark}
-                      isDeleting={deleteMutation.isPending}
-                      onEdit={onEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-
-          {/* Pagination */}
-          {data.totalPages > 1 && (
-            <WeatherPagination
-              isDark={isDark}
-              page={data.page}
-              totalPages={data.totalPages}
-              hasPreviousPage={data.hasPreviousPage}
-              hasNextPage={data.hasNextPage}
-              onPageChange={setPage}
-            />
-          )}
-        </Card>
-      )}
+      {/* Data Table using new generic component */}
+      <DataTable
+        data={data ?? null}
+        isLoading={isLoading}
+        error={error ?? null}
+        columns={columns}
+        icon={Thermometer}
+        title="Forecast List"
+        description={data ? `${data.totalCount} forecast${data.totalCount !== 1 ? 's' : ''} in total` : undefined}
+        emptyTitle="No forecasts found"
+        emptyDescription="Get started by creating your first forecast."
+        emptyActionLabel="Create first forecast"
+        onCreate={onCreate}
+        onEdit={onEdit}
+        onDelete={handleDelete}
+        getId={(item) => item.id}
+        onPageChange={setPage}
+      />
 
       {/* Delete Dialog */}
-      <WeatherDeleteDialog
+      <DeleteDialog
         isOpen={deleteId !== null}
         isDark={isDark}
         isPending={deleteMutation.isPending}
