@@ -1,0 +1,18 @@
+<Solution>
+  <Project Path="Arquitectura.Api/Arquitectura.Api.csproj" />
+  <Project Path="Arquitectura.AppHost/Arquitectura.AppHost.csproj" />
+  <Project Path="Arquitectura.Application/Arquitectura.Application.csproj" />
+  <Project Path="Arquitectura.Client/Arquitectura.Client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="Arquitectura.Database/Arquitectura.Database.sqlproj" Id="5802c119-7f95-4a1f-9c67-314b570ffb4e">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="Arquitectura.Domain/Arquitectura.Domain.csproj" />
+  <Project Path="Arquitectura.Infrastructure/Arquitectura.Infrastructure.csproj" />
+  <Project Path="Arquitectura.Persistence/Arquitectura.Persistence.csproj" />
+  <Project Path="Arquitectura.ServiceDefaults/Arquitectura.ServiceDefaults.csproj" />
+  <Project Path="Arquitectura.Tests/Arquitectura.Tests.csproj" />
+</Solution>
