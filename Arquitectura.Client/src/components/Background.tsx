@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useTheme } from 'next-themes'
 
 interface BackgroundProps {
   children: React.ReactNode
@@ -6,38 +6,9 @@ interface BackgroundProps {
   centered?: boolean
 }
 
-function getSystemTheme(): 'dark' | 'light' {
-  const stored = localStorage.getItem('theme')
-  if (stored === 'dark' || stored === 'light') return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
 export function Background({ children, className = '', centered = false }: BackgroundProps) {
-  const [theme, setTheme] = useState<'dark' | 'light'>('light')
-
-  useEffect(() => {
-    const detected = getSystemTheme()
-    setTheme(detected)
-    
-    const handleThemeChange = () => setTheme(getSystemTheme())
-    
-    window.addEventListener('theme-change', handleThemeChange)
-    
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = (e: MediaQueryListEvent) => {
-      if (!localStorage.getItem('theme')) {
-        setTheme(e.matches ? 'dark' : 'light')
-      }
-    }
-    mediaQuery.addEventListener('change', handler)
-    
-    return () => {
-      window.removeEventListener('theme-change', handleThemeChange)
-      mediaQuery.removeEventListener('change', handler)
-    }
-  }, [])
-
-  const isDark = theme === 'dark'
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   return (
     <div className={`min-h-screen relative flex ${centered ? 'items-center justify-center' : ''} ${className}`}>

@@ -9,30 +9,15 @@ import { Toaster } from '@/components/ui/sonner'
 import { useTheme } from 'next-themes'
 import { Background } from '@/components/Background'
 import { Header } from '@/components/Header'
+import { useAuthStore } from '@/stores/authStore'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081'
 
-// Auth helpers
-function getAuthToken(): string | null {
-  return localStorage.getItem('accessToken')
-}
-
-function getCurrentUser(): { firstName: string; lastName: string } | null {
-  const userStr = localStorage.getItem('user')
-  return userStr ? JSON.parse(userStr) : null
-}
-
-function logout() {
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
-  localStorage.removeItem('user')
-  window.location.href = '/login'
-}
-
-// Protected route wrapper
+// Protected route wrapper - uses Zustand store
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = getAuthToken()
-  if (!token) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
   return <>{children}</>
@@ -40,8 +25,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 // Login page - redirect if already authenticated
 function LoginPage() {
-  const token = getAuthToken()
-  if (token) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  
+  if (isAuthenticated) {
     return <Navigate to="/" replace />
   }
   return <Login />
@@ -50,12 +36,9 @@ function LoginPage() {
 function AppContent() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedForecast, setSelectedForecast] = useState<WeatherForecast | null>(null)
-  const [user, setUser] = useState<{ firstName: string; lastName: string } | null>(null)
-  const { theme } = useTheme()
-
-  useEffect(() => {
-    setUser(getCurrentUser())
-  }, [])
+  const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
+  const { resolvedTheme } = useTheme()
 
   const isEditMode = selectedForecast !== null
 
@@ -79,9 +62,14 @@ function AppContent() {
     setSelectedForecast(null)
   }
 
+  const handleLogout = () => {
+    logout()
+    window.location.href = '/login'
+  }
+
   return (
     <Background>
-      <Header user={user} onLogout={logout} />
+      <Header user={user ? { firstName: user.firstName, lastName: user.lastName } : null} onLogout={handleLogout} />
       
       <main className="container mx-auto py-8 px-4 max-w-6xl relative">
         <div className="animate-in fade-in zoom-in-95 duration-500">
@@ -90,12 +78,12 @@ function AppContent() {
       </main>
 
       <Dialog open={modalOpen} onOpenChange={(open) => !open && handleCancel()}>
-        <DialogContent className={theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'}>
+        <DialogContent className={resolvedTheme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'}>
           <DialogHeader>
-            <DialogTitle className={theme === 'dark' ? 'text-white' : 'text-slate-950'}>
+            <DialogTitle className={resolvedTheme === 'dark' ? 'text-white' : 'text-slate-950'}>
               {isEditMode ? 'Edit Forecast' : 'New Forecast'}
             </DialogTitle>
-            <DialogDescription className={theme === 'dark' ? 'text-slate-400' : 'text-slate-700'}>
+            <DialogDescription className={resolvedTheme === 'dark' ? 'text-slate-400' : 'text-slate-700'}>
               {isEditMode ? 'Update the weather forecast details below' : 'Fill in the details for your new weather forecast'}
             </DialogDescription>
           </DialogHeader>

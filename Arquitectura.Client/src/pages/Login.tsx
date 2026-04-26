@@ -9,8 +9,8 @@ import { LogIn, UserPlus, ArrowRight } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Background } from '@/components/Background'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { APP_NAME, APP_TAGLINE } from '@/lib/constants'
-import { API_BASE } from '@/lib/constants'
+import { APP_NAME, APP_TAGLINE, API_BASE } from '@/lib/constants'
+import { useAuthStore } from '@/stores/authStore'
 
 interface LoginResponse {
   accessToken: string
@@ -24,8 +24,8 @@ type AuthMode = 'login' | 'register'
 export default function Login() {
   const [mode, setMode] = useState<AuthMode>('login')
   const [loading, setLoading] = useState(false)
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   // Login fields
   const [email, setEmail] = useState('')
@@ -38,6 +38,9 @@ export default function Login() {
   const [registerPassword, setRegisterPassword] = useState('')
 
   const navigate = useNavigate()
+  
+  // Zustand store
+  const login = useAuthStore((state) => state.login)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,9 +57,15 @@ export default function Login() {
         return
       }
       const result = data as LoginResponse
-      localStorage.setItem('accessToken', result.accessToken)
-      localStorage.setItem('refreshToken', result.refreshToken)
-      localStorage.setItem('user', JSON.stringify(result.user))
+      
+      // Use Zustand store instead of localStorage
+      login({
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        expiresAt: result.expiresAt,
+      })
+      
       toast.success(`Welcome back, ${result.user.firstName}!`)
       navigate('/')
     } catch {
@@ -81,9 +90,15 @@ export default function Login() {
         return
       }
       const result = data as LoginResponse
-      localStorage.setItem('accessToken', result.accessToken)
-      localStorage.setItem('refreshToken', result.refreshToken)
-      localStorage.setItem('user', JSON.stringify(result.user))
+      
+      // Use Zustand store instead of localStorage
+      login({
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        expiresAt: result.expiresAt,
+      })
+      
       toast.success(`Welcome, ${result.user.firstName}!`)
       navigate('/')
     } catch {
@@ -167,11 +182,19 @@ export default function Login() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className={isDark ? 'text-slate-200' : 'text-slate-700'}>Email</Label>
-                <Input id="email" type="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} required />
+                <Input id="email" type="email" autoComplete="email" placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password" className={isDark ? 'text-slate-200' : 'text-slate-700'}>Password</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} required />
+                <Input 
+                  id="password" 
+                  type="password" 
+                  autoComplete="current-password"
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  className={inputClass} 
+                  required 
+                />
               </div>
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0" disabled={loading}>
                 {loading ? 'Signing in...' : 'Sign In'}
@@ -196,7 +219,15 @@ export default function Login() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="registerPassword" className={isDark ? 'text-slate-200' : 'text-slate-700'}>Password</Label>
-                <Input id="registerPassword" type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} className={inputClass} required />
+                <Input 
+                  id="registerPassword" 
+                  type="password" 
+                  autoComplete="new-password"
+                  value={registerPassword} 
+                  onChange={(e) => setRegisterPassword(e.target.value)} 
+                  className={inputClass} 
+                  required 
+                />
               </div>
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0" disabled={loading}>
                 {loading ? 'Creating account...' : 'Create Account'}

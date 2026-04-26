@@ -1,12 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@/stores/authStore'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8081'
-
-// Get auth headers
-function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('accessToken')
-  return token ? { 'Authorization': `Bearer ${token}` } : {}
-}
 
 // Types
 export interface WeatherForecast {
@@ -36,8 +31,9 @@ export interface CreateForecastRequest {
 // API functions
 export const weatherApi = {
   getAll: async (page = 1, pageSize = 20): Promise<PaginatedResponse<WeatherForecast>> => {
+    const accessToken = useAuthStore.getState().accessToken
     const res = await fetch(`${API_BASE}/api/weatherforecast?page=${page}&pageSize=${pageSize}`, {
-      headers: getAuthHeaders(),
+      headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
     if (res.status === 204) {
       return {
@@ -55,17 +51,22 @@ export const weatherApi = {
   },
 
   getById: async (id: number): Promise<WeatherForecast> => {
+    const accessToken = useAuthStore.getState().accessToken
     const res = await fetch(`${API_BASE}/api/weatherforecast/${id}`, {
-      headers: getAuthHeaders(),
+      headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
     if (!res.ok) throw new Error('Failed to fetch forecast')
     return res.json()
   },
 
   create: async (data: CreateForecastRequest): Promise<WeatherForecast> => {
+    const accessToken = useAuthStore.getState().accessToken
     const res = await fetch(`${API_BASE}/api/weatherforecast`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+      },
       body: JSON.stringify(data),
     })
     if (!res.ok) throw new Error('Failed to create forecast')
@@ -73,9 +74,13 @@ export const weatherApi = {
   },
 
   update: async (id: number, data: CreateForecastRequest): Promise<WeatherForecast> => {
+    const accessToken = useAuthStore.getState().accessToken
     const res = await fetch(`${API_BASE}/api/weatherforecast/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+      },
       body: JSON.stringify(data),
     })
     if (!res.ok) throw new Error('Failed to update forecast')
@@ -83,9 +88,10 @@ export const weatherApi = {
   },
 
   delete: async (id: number): Promise<void> => {
+    const accessToken = useAuthStore.getState().accessToken
     const res = await fetch(`${API_BASE}/api/weatherforecast/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
+      headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
     if (!res.ok) throw new Error('Failed to delete forecast')
   },

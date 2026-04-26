@@ -1,29 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Moon, Sun } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 
-function getSystemTheme(): 'dark' | 'light' {
-  const stored = localStorage.getItem('theme')
-  if (stored === 'dark' || stored === 'light') return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('light')
+  const { theme, setTheme, resolvedTheme } = useTheme()
 
+  // Ensure theme is set on mount
   useEffect(() => {
-    setTheme(getSystemTheme())
-  }, [])
+    if (!theme) {
+      setTheme('system')
+    }
+  }, [theme, setTheme])
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark'
-    localStorage.setItem('theme', newTheme)
+    const newTheme = resolvedTheme === 'dark' ? 'light' : 'dark'
     setTheme(newTheme)
-    // Dispatch event for other components
-    window.dispatchEvent(new Event('theme-change'))
   }
 
-  const isDark = theme === 'dark'
+  const isDark = resolvedTheme === 'dark'
 
   return (
     <Button
@@ -36,8 +31,8 @@ export function ThemeToggle() {
           : 'border-slate-400/50 bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900'
       }`}
     >
-      <Sun className={`h-4 w-4 transition-all ${isDark ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
-      <Moon className={`absolute h-4 w-4 transition-all ${isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
+      <Sun className={`h-4 w-4 transition-all absolute ${isDark ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
+      <Moon className={`h-4 w-4 transition-all ${isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
       <span className="sr-only">Toggle theme</span>
     </Button>
   )
