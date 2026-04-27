@@ -4,8 +4,9 @@ import type { WeatherForecast } from '@/services/weatherApi'
 import { Thermometer, Cloud, Wind, Sun } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTheme } from 'next-themes'
-import { DataTable, StatsGrid, DeleteDialog, PageHeader } from '@/components/common'
-import { useWeatherColumns } from '@/components/weather/useWeatherColumns'
+import { DataTable, StatsGrid, DeleteDialog, PageHeader, DataTableToolbar } from '@/components/common'
+import { useDataTableConfig } from '@/hooks'
+import type { Column } from '@/components/common'
 
 interface WeatherListProps {
   onCreate: () => void
@@ -19,8 +20,75 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
   const deleteMutation = useDeleteForecast()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  
-  const columns = useWeatherColumns(isDark)
+
+  // DataTable Config - obtiene columnas del backend
+  const {
+    config: tableColumns,
+    visibleColumnKeys,
+    toggleColumn,
+    saveConfig,
+    resetConfig,
+    hasUnsavedChanges,
+    isSaving,
+    isLoading: isConfigLoading,
+  } = useDataTableConfig({ tableKey: 'WeatherForecasts' })
+
+  // Mapear columnas del backend con los renders del frontend
+  // Normalizar PascalCase (backend) a camelCase (frontend)
+  const getWeatherRender = (key: string) => {
+    const renders: Record<string, (item: WeatherForecast, isDark: boolean) => React.ReactNode> = {
+      id: (item) => <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>#{item.id}</span>,
+      date: (item) => (
+        <span className={isDark ? 'bg-blue-500/20 text-blue-300 px-2 py-1 rounded-md' : 'bg-blue-50 text-blue-700 px-2 py-1 rounded-md'}>
+          {item.date}
+        </span>
+      ),
+      temperatureC: (item) => {
+        const temp = item.temperatureC
+        const getIcon = () => {
+          if (temp >= 30) return '🔥'
+          if (temp >= 20) return '☀️'
+          if (temp >= 10) return '😊'
+          if (temp >= 0) return '😌'
+          if (temp >= -10) return '🥶'
+          return '❄️'
+        }
+        return (
+          <>
+            <span className="mr-1">{getIcon()}</span>
+            <span className={`font-bold text-lg ${
+              temp > 20 ? isDark ? 'text-red-400' : 'text-red-600'
+                : temp < 5 ? isDark ? 'text-blue-400' : 'text-blue-600'
+                : isDark ? 'text-yellow-400' : 'text-yellow-600'
+            }`}>
+              {temp}°C
+            </span>
+            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}> /{item.temperatureF}°F</span>
+          </>
+        )
+      },
+      summary: (item) => item.summary ? (
+        <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{item.summary}</span>
+      ) : (
+        <span className={isDark ? 'text-slate-500 italic' : 'text-slate-400 italic'}>Sin resumen</span>
+      ),
+    }
+    return renders[key]
+  }
+
+  // Construir columnas filtradas por visibilidad del backend
+  // Convertir PascalCase a camelCase para que matcheen con WeatherForecast
+  const columns: Column<WeatherForecast>[] = visibleColumnKeys
+    .map(key => {
+      const colConfig = tableColumns.find(c => c.key === key)
+      const camelKey = key.charAt(0).toLowerCase() + key.slice(1)
+      const customRender = getWeatherRender(camelKey)
+      return {
+        key: camelKey,
+        header: colConfig?.label || key,
+        render: customRender ? ((item: WeatherForecast) => customRender(item, isDark)) : undefined,
+      }
+    })
 
   const handleDelete = (id: number) => setDeleteId(id)
 
@@ -40,7 +108,7 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
   }
 
   // Stats calculation
-  const stats = data?.items.length 
+  const stats = data?.items.length
     ? [
         { title: 'Total', value: data.totalCount, icon: Cloud },
         { title: 'Avg', value: `${Math.round(data.items.reduce((acc, f) => acc + f.temperatureC, 0) / data.items.length)}°C`, icon: Thermometer },
@@ -62,7 +130,7 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
         <StatsGrid stats={stats} isDark={isDark} />
       )}
 
-      {/* Data Table using new generic component */}
+      {/* Data Table */}
       <DataTable
         data={data ?? null}
         isLoading={isLoading}
@@ -80,6 +148,22 @@ export function WeatherList({ onCreate, onEdit }: WeatherListProps) {
         getId={(item) => item.id}
         onPageChange={setPage}
       />
+
+      {/* DataTable Config Toolbar */}
+      {!isConfigLoading && tableColumns.length > 0 && (
+        <div className="flex justify-end">
+          <DataTableToolbar
+            columns={tableColumns}
+            visibleColumns={visibleColumnKeys}
+            onToggleColumn={toggleColumn}
+            onSaveConfig={saveConfig}
+            onResetConfig={resetConfig}
+            hasUnsavedChanges={hasUnsavedChanges}
+            isSaving={isSaving}
+            isDark={isDark}
+          />
+        </div>
+      )}
 
       {/* Delete Dialog */}
       <DeleteDialog
