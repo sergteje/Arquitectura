@@ -31,10 +31,14 @@ public class AuthHandler :
 
     public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByEmailAsync(request.Request.Email, cancellationToken);
-        if (user == null)
-            return Result<AuthResponse>.Failure("AUTH", "Invalid email or password");
+        var userResult = await _userRepository.GetByEmailAsync(request.Request.Email, cancellationToken);
+        
+        if (userResult.IsFailure)
+            return Result<AuthResponse>.Failure("AUTH", "User not found");
 
+        var user = userResult.Value!;
+
+        // Check password
         if (!VerifyPassword(request.Request.Password, user.PasswordHash))
             return Result<AuthResponse>.Failure("AUTH", "Invalid email or password");
 
@@ -46,7 +50,10 @@ public class AuthHandler :
 
         user.UpdateRefreshToken(refreshToken, _refreshTokenExpiration);
         user.LastLoginAt = DateTime.UtcNow;
-        await _userRepository.UpdateAsync(user, cancellationToken);
+        
+        var updateResult = await _userRepository.UpdateAsync(user, cancellationToken);
+        if (updateResult.IsFailure)
+            return Result<AuthResponse>.Failure("AUTH", "Failed to update user");
 
         var response = new AuthResponse(
             accessToken,
@@ -59,8 +66,12 @@ public class AuthHandler :
 
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        var exists = await _userRepository.ExistsAsync(request.Request.Email, cancellationToken);
-        if (exists)
+        var existsResult = await _userRepository.ExistsAsync(request.Request.Email, cancellationToken);
+        
+        if (existsResult.IsFailure)
+            return Result<AuthResponse>.Failure("AUTH", "Error checking user existence");
+
+        if (existsResult.Value)
             return Result<AuthResponse>.Failure("AUTH", "Email already registered");
 
         var user = new User
@@ -72,14 +83,17 @@ public class AuthHandler :
             CreatedBy = request.Request.Email
         };
 
-        var id = await _userRepository.CreateAsync(user, cancellationToken);
-        user.Id = id;
+        var createResult = await _userRepository.CreateAsync(user, cancellationToken);
+        
+        if (createResult.IsFailure)
+            return Result<AuthResponse>.Failure("AUTH", createResult.Error!.Message);
+
+        user = createResult.Value!;
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user.Id, user.Email);
         var refreshToken = _jwtTokenService.GenerateRefreshToken();
 
         user.UpdateRefreshToken(refreshToken, _refreshTokenExpiration);
-        await _userRepository.UpdateAsync(user, cancellationToken);
 
         var response = new AuthResponse(
             accessToken,
@@ -96,9 +110,12 @@ public class AuthHandler :
         if (userId == null || email == null)
             return Result<RefreshTokenResponse>.Failure("AUTH", "Invalid refresh token");
 
-        var user = await _userRepository.GetByIdAsync(userId.Value, cancellationToken);
-        if (user == null)
+        var userResult = await _userRepository.GetByIdAsync(userId.Value, cancellationToken);
+        
+        if (userResult.IsFailure)
             return Result<RefreshTokenResponse>.Failure("AUTH", "User not found");
+
+        var user = userResult.Value!;
 
         if (!user.IsRefreshTokenValid() || user.RefreshToken != request.Request.RefreshToken)
             return Result<RefreshTokenResponse>.Failure("AUTH", "Refresh token expired");
@@ -107,7 +124,10 @@ public class AuthHandler :
         var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
 
         user.UpdateRefreshToken(newRefreshToken, _refreshTokenExpiration);
-        await _userRepository.UpdateAsync(user, cancellationToken);
+        
+        var updateResult = await _userRepository.UpdateAsync(user, cancellationToken);
+        if (updateResult.IsFailure)
+            return Result<RefreshTokenResponse>.Failure("AUTH", "Failed to update user");
 
         var response = new RefreshTokenResponse(
             newAccessToken,
@@ -119,12 +139,18 @@ public class AuthHandler :
 
     public async Task<Result> Handle(LogoutCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
-        if (user != null)
+        var userResult = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+        
+        if (userResult.IsSuccess)
         {
+            var user = userResult.Value!;
             user.ClearRefreshToken();
-            await _userRepository.UpdateAsync(user, cancellationToken);
+            
+            var updateResult = await _userRepository.UpdateAsync(user, cancellationToken);
+            if (updateResult.IsFailure)
+                return Result.Failure("AUTH", "Failed to logout");
         }
+        
         return Result.Success();
     }
 

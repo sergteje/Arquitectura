@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Arquitectura.Domain.Extensions;
 using Arquitectura.Domain.Models;
@@ -13,8 +14,8 @@ namespace Arquitectura.Api.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Tags("Weather Forecast")]
+[Authorize]
 [EnableRateLimiting("fixed")]
-[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 public class WeatherForecastController(ISender mediator) : ControllerBase
 {
     [HttpGet]

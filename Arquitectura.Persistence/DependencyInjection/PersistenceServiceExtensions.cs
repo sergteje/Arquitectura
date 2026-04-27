@@ -29,6 +29,7 @@ public static class PersistenceServiceExtensions
         // Register repositories
         services.AddScoped<IWeatherForecastRepository, WeatherForecastRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IDataTableRepository, DataTableRepository>();
         
         return services;
     }
@@ -52,6 +53,7 @@ public static class PersistenceServiceExtensions
         // Register repositories
         services.AddScoped<IWeatherForecastRepository, WeatherForecastRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IDataTableRepository, DataTableRepository>();
         
         return services;
     }

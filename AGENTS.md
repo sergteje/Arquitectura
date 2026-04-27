@@ -42,6 +42,11 @@ npm run lint     # ESLint
 
 # Unit tests
 dotnet test
+
+# E2E tests
+cd Arquitectura.Client
+npm run test:e2e     # Playwright headless
+npm run test:e2e:ui   # Playwright UI interactivo
 ```
 
 ### Docker
@@ -75,6 +80,7 @@ docker compose up -d  # API + SQL Server + Redis + Observability stack
 - Tests use `xunit.v3`, `Moq`, `FluentAssertions`
 - Integration tests in `Arquitectura.Tests/Persistence/` require running SQL Server
 - Test scripts assume HTTPS on localhost:44358
+- E2E tests use `Playwright`, run with `npm run test:e2e` or `npm run test:e2e:ui` from Arquitectura.Client
 
 ## Frontend Components
 
@@ -111,21 +117,27 @@ src/lib/
 ## Next Session (To-Do)
 
 ### 🧪 Testing [PRIORIDAD 1]
-- Tests de frontend (Vitest + React Testing Library)
-- Tests E2E (Playwright/Cypress)
+- ✅ Tests E2E (Playwright) - 11 tests passing
+- ❌ Tests de frontend (Vitest) - config no compila
+- ESLint config para ESLint v9 falta
 
 ### 🎨 UI/UX
-- Agregar más páginas (Profile, Settings, etc.)
-- Animaciones adicionales (framer-motion)
-- Skeleton loaders más elaborados
+- Página Profile
+- Página Settings
+- Skeleton loaders
+- Animaciones (framer-motion)
 
 ### 🔧 Features
-- Refresh token automático
 - Protected routes con redirect
-- Notificaciones push
 - Persist auth (remember me)
+- Refresh token automático
+- Notificaciones push
 
 ### 📦 Calidad
-- Agregar Zustand para estado global (auth, theme)
+- ✅ Zustand para estado global (ya está)
 - Code splitting lazy routes
 - PWA con service workers
+
+### 🐛 Bugs/Warnings (pendientes)
+- PostCSS XSS warning (frontend)
+- OpenTelemetry vulnerability (sin patch aún)
