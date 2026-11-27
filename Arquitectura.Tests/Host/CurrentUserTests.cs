@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using Arquitectura.Host.Identity;
+using BuildingBlocks.Abstractions.Identity;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
+using ResulTus;
+using ResulTus.Testing;
 using Xunit;
 
 namespace Arquitectura.Tests.Host;
@@ -20,23 +23,25 @@ public class CurrentUserTests
     [Fact]
     public void UserId_ReadsTheSubClaim()
     {
-        var currentUser = new CurrentUser(AccessorFor(Principal(
+        ICurrentUser currentUser = new CurrentUser(AccessorFor(Principal(
             new Claim("sub", "7"),
             new Claim("email", "user@example.com"))));
 
         currentUser.UserId.Should().Be(7);
         currentUser.Email.Should().Be("user@example.com");
         currentUser.IsAuthenticated.Should().BeTrue();
+        currentUser.UserIdResult.ShouldSucceed().Should().Be(7);
     }
 
     [Fact]
-    public void RequireUserId_OnAnonymous_Throws()
+    public void UserIdResult_OnAnonymous_ReturnsUnauthorized()
     {
-        var currentUser = new CurrentUser(AccessorFor(new ClaimsPrincipal(new ClaimsIdentity())));
+        ICurrentUser currentUser = new CurrentUser(AccessorFor(new ClaimsPrincipal(new ClaimsIdentity())));
 
         currentUser.UserId.Should().BeNull();
         currentUser.IsAuthenticated.Should().BeFalse();
-        currentUser.Invoking(user => user.RequireUserId())
-            .Should().Throw<UnauthorizedAccessException>();
+        var error = currentUser.UserIdResult.ShouldFail();
+        error.Type.Should().Be(ErrorType.Unauthorized);
+        error.Code.Should().Be("AUTH_REQUIRED");
     }
 }

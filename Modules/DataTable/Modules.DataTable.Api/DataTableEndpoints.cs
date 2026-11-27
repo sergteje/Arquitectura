@@ -30,11 +30,12 @@ public static class DataTableEndpoints
                 ISender sender,
                 ICurrentUser currentUser,
                 CancellationToken cancellationToken) =>
-            {
-                var userId = currentUser.RequireUserId();
-                var result = await sender.Send(new GetDataTableConfigQuery(tableKey, userId), cancellationToken);
-                return result.ToHttpResult();
-            })
+            await currentUser.UserIdResult.Match(
+                async userId => (await sender.Send(
+                        new GetDataTableConfigQuery(tableKey, userId),
+                        cancellationToken))
+                    .ToHttpResult(ResultStatus.Map),
+                error => Task.FromResult(error.ToProblemHttpResult())))
             .Produces<DataTableConfigResponseDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -44,14 +45,12 @@ public static class DataTableEndpoints
                 ISender sender,
                 ICurrentUser currentUser,
                 CancellationToken cancellationToken) =>
-            {
-                var userId = currentUser.RequireUserId();
-                var result = await sender.Send(
-                    new SaveDataTableConfigCommand(tableKey, userId, config),
-                    cancellationToken);
-
-                return result.ToNoContentHttpResult();
-            })
+            await currentUser.UserIdResult.Match(
+                async userId => (await sender.Send(
+                        new SaveDataTableConfigCommand(tableKey, userId, config),
+                        cancellationToken))
+                    .ToNoContentHttpResult(),
+                error => Task.FromResult(error.ToProblemHttpResult())))
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -60,14 +59,12 @@ public static class DataTableEndpoints
                 ISender sender,
                 ICurrentUser currentUser,
                 CancellationToken cancellationToken) =>
-            {
-                var userId = currentUser.RequireUserId();
-                var result = await sender.Send(
-                    new ResetDataTableConfigCommand(tableKey, userId),
-                    cancellationToken);
-
-                return result.ToNoContentHttpResult();
-            })
+            await currentUser.UserIdResult.Match(
+                async userId => (await sender.Send(
+                        new ResetDataTableConfigCommand(tableKey, userId),
+                        cancellationToken))
+                    .ToNoContentHttpResult(),
+                error => Task.FromResult(error.ToProblemHttpResult())))
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -105,7 +102,6 @@ public static class DataTableEndpoints
                 ICurrentUser currentUser,
                 CancellationToken cancellationToken) =>
             {
-                var userId = currentUser.RequireUserId();
                 var exportRequest = new DataTableExportRequestDto
                 {
                     TableKey = tableKey,
@@ -114,13 +110,12 @@ public static class DataTableEndpoints
                     SortDirection = request.SortDirection
                 };
 
-                var result = await sender.Send(
-                    new CreateDataTableExportCommand(userId, exportRequest),
-                    cancellationToken);
-
-                return result.Match<IResult>(
-                    value => Results.Accepted(value: value),
-                    error => error.ToProblemHttpResult());
+                return await currentUser.UserIdResult.Match(
+                    async userId => (await sender.Send(
+                            new CreateDataTableExportCommand(userId, exportRequest),
+                            cancellationToken))
+                        .ToAcceptedHttpResult(),
+                    error => Task.FromResult(error.ToProblemHttpResult()));
             })
             .Produces<DataTableExportResponseDto>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status400BadRequest);

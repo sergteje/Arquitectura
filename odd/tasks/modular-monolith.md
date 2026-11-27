@@ -142,3 +142,17 @@ L12 ResulTus 1.4.0 dogfooding (user request): added the missing APIs to the pack
 - Arquitectura: all ResulTus packages moved to 1.4.0 from nuget.org; the local feed/NuGet.config was removed. `LoggingBehavior` logs every result through `IResultOutcome` (expected client errors at Information); `LoginCommandHandler` no longer logs or takes a logger.
 - E2E: unique e-mail now uses `randomUUID()` instead of `Date.now()` to avoid parallel-worker collisions.
 Verification: Release build 0 errors/0 warnings; `dotnet test` 71/71; E2E 11/11.
+
+L13 ROP through the application layer (user request: "Hay que seguir ROP 100%"):
+- Handlers (`Login`, `Register`, `RefreshToken`, `Logout`) now compose `Result` with `MapErrorAsync`/`EnsureAsync`/`BindAsync`/`Map`/`ToUnitResult`; no `TryGetValue`/`IsFailure` in the flow.
+- Repositories (`User`, `WeatherForecast`, `DataTable`) use `Result.TryAsync` + `MapError`; every `try/catch` was removed from persistence.
+- `IJwtTokenService.ValidateToken` returns `Result<TokenIdentity>` instead of a nullable tuple.
+- Exceptions remain only at the HTTP boundary: `ValidationBehavior` (structured `ValidationErrors`) and `CurrentUser.RequireUserId` (401).
+- Documented in ADR-011 and AGENTS rule 12.
+Verification: Release build 0 errors/0 warnings; `dotnet test` 71/71; E2E 11/11.
+
+L14 CurrentUser ROP (user request):
+- `ICurrentUser.RequireUserId()` (throwing) replaced by `Result<int> UserIdResult` with an `AUTH_REQUIRED` unauthorized failure.
+- Auth logout and the four DataTable endpoints compose it with `Match`; no exception at the identity boundary.
+- The validation boundary (`RequestValidationException`) is the only exception left; ADR-011/AGENTS updated.
+Verification: Release build 0 errors/0 warnings; `dotnet test` 71/71; E2E 11/11.

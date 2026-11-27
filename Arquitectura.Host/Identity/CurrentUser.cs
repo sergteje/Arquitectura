@@ -35,8 +35,4 @@ public sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : ICur
 
     /// <inheritdoc />
     public bool IsAuthenticated => Principal?.Identity?.IsAuthenticated == true;
-
-    /// <inheritdoc />
-    public int RequireUserId() =>
-        UserId ?? throw new UnauthorizedAccessException("The current request does not carry an authenticated user identifier.");
 }
