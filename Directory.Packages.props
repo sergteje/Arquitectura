@@ -10,8 +10,19 @@
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="17.0.0" />
   </ItemGroup>
 
-  <ItemGroup Label="Architecture">
+  <ItemGroup Label="ResulTus">
     <PackageVersion Include="ResulTus" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.Analyzers" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.AspNetCore" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.Extensions" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.Logging" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.SourceGenerators" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.Testing" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.Validation" Version="1.3.0" />
+    <PackageVersion Include="ResulTus.Validation.FluentValidation" Version="1.3.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Architecture">
     <PackageVersion Include="Dapper" Version="2.1.100" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="8.0.0" />
     <PackageVersion Include="StackExchange.Redis" Version="3.4.35" />

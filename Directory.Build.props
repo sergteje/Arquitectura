@@ -9,4 +9,8 @@
     <Deterministic>true</Deterministic>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <PackageReference Include="ResulTus.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+
 </Project>

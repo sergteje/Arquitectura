@@ -9,6 +9,8 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Mapster" />
     <PackageReference Include="ResulTus" />
+    <PackageReference Include="ResulTus.Extensions" />
+    <PackageReference Include="ResulTus.SourceGenerators" />
   </ItemGroup>
 
   <ItemGroup>
