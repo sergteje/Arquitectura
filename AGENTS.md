@@ -21,17 +21,18 @@ Arquitectura.slnx
 └── Arquitectura.AppHost                   # Aspire orchestration → Arquitectura.Host
 ```
 
-Legacy projects (`Arquitectura.Api`, `Arquitectura.Application`, `Arquitectura.Domain`,
-`Arquitectura.Infrastructure`, `Arquitectura.Persistence`) still exist on disk but are **out of the
-solution**. They are superseded by the tree above and can be deleted once the migration is signed off.
+The legacy layered projects (`Arquitectura.Api`, `Arquitectura.Application`, `Arquitectura.Domain`,
+`Arquitectura.Infrastructure`, `Arquitectura.Persistence`) were removed. The solution only contains the
+modular monolith above.
 
 ## Developer Commands
 
 ### Backend
 ```powershell
+dotnet build Arquitectura.Cli.slnf                # CLI build (excludes SQL project + esproj)
 dotnet build Arquitectura.Host/Arquitectura.Host.csproj
-dotnet run --project Arquitectura.Host          # https://localhost:44358, Scalar at /scalar
-dotnet run --project Arquitectura.AppHost       # Aspire dashboard, orchestrates Host + Client
+dotnet run --project Arquitectura.Host           # https://localhost:44358, Scalar at /scalar
+dotnet run --project Arquitectura.AppHost        # Aspire dashboard, orchestrates Host + Client
 ```
 
 ### Frontend
@@ -82,8 +83,8 @@ docker compose up -d   # Host + SQL Server + Redis + observability
   - Auth: `sp_User_GetByEmail`, `sp_User_GetById`, `sp_User_Create`, `sp_User_Update`, `sp_User_Exists`
   - Weather: `dbo.WeatherForecast_GetAll|GetById|Create|Update|Delete`
   - DataTable: `sp_GetTableConfig`, `sp_SaveUserTableConfig`, `sp_GetTableData`
-- **Known gap**: `sp_DeleteUserTableConfig` is referenced by `DataTableRepository.ResetUserConfigAsync`
-  but does not exist yet (see `TECHNICAL_DEBT.md`).
+- **Known gap**: none. `sp_DeleteUserTableConfig` records the removed preferences in the audit history
+  and deletes them (see `TECHNICAL_DEBT.md` for the remaining minor items).
 
 ## Infrastructure
 
@@ -109,5 +110,5 @@ HTTP contracts are frozen: see `ENDPOINT_INVENTORY.md`.
 
 ## Known Technical Debt
 
-Tracked in `TECHNICAL_DEBT.md`: missing `sp_DeleteUserTableConfig`, SHA-256 password hashing,
-duplicate Redis connections, pre-existing `MessagePack` advisory.
+Tracked in `TECHNICAL_DEBT.md`: lazy rehash of legacy password hashes, `Newtonsoft.Json` in the Redis
+cache, a table-specific database health check, and public health endpoints.

@@ -12,7 +12,7 @@ Consequences**.
 | ADR-005 | Explicit read-through caching | Accepted |
 | ADR-006 | Preserve error body and status mapping | Accepted |
 | ADR-007 | Fix pre-existing defects as part of the move | Accepted |
-| ADR-008 | Missing `sp_DeleteUserTableConfig` documented, not fixed | Accepted |
+| ADR-008 | Missing `sp_DeleteUserTableConfig` documented, later added | Resolved |
 
 ---
 
@@ -133,13 +133,18 @@ deterministic.
 
 ---
 
-## ADR-008 — Missing `sp_DeleteUserTableConfig` documented, not fixed
+## ADR-008 — Missing `sp_DeleteUserTableConfig` documented, later added
 
-**Context.** `DataTableRepository.ResetUserConfigAsync` calls `sp_DeleteUserTableConfig`, which does
-not exist in `Arquitectura.Database`. The SQL project requires SSDT/Visual Studio to build and deploy.
+**Context.** `DataTableRepository.ResetUserConfigAsync` calls `sp_DeleteUserTableConfig`, which did not
+exist in `Arquitectura.Database`. The SQL project requires SSDT/Visual Studio to build and deploy.
 
-**Decision.** Document the gap in `TECHNICAL_DEBT.md` and do not fabricate the procedure during a
-structural migration. The repository already maps the failure to a `Result` failure instead of crashing.
+**Decision (initial).** Document the gap in `TECHNICAL_DEBT.md` rather than fabricate the procedure
+during a structural migration. The repository maps the failure to a `Result` failure instead of crashing.
 
-**Consequences.** `DELETE /api/datatable/{tableKey}/config` fails until the procedure is added. Adding
-it is an isolated, well-scoped follow-up.
+**Resolution.** `sp_DeleteUserTableConfig.sql` was added to `dbo/Stored Procedures`, registered in the
+SQL project, and follows the same audit pattern as `sp_SaveUserTableConfig`: it records the removed
+values in `UserTablePreferencesHistory` with `ChangeType = 'DELETE'` before deleting the row.
+
+**Consequences.** `DELETE /api/datatable/{tableKey}/config` works once the database is deployed. The
+procedure still requires a SQL deployment (Visual Studio / `sqlpackage`); it is excluded from the CLI
+solution filter.

@@ -6,10 +6,10 @@ the runtime composition.
 
 ## Goals
 
-  One API, one deployment, one database.
-  Modules that can be understood, tested and changed in isolation.
-  Hard boundaries enforced by the compiler and by architecture tests.
-  Preserved HTTP contracts so the React client keeps working unchanged.
+- One API, one deployment, one database.
+- Modules that can be understood, tested and changed in isolation.
+- Hard boundaries enforced by the compiler and by architecture tests.
+- Preserved HTTP contracts so the React client keeps working unchanged.
 
 ## Layers
 
@@ -27,11 +27,12 @@ BuildingBlocks.Infrastructure ──► BuildingBlocks.Abstractions
 ### `Arquitectura.Host`
 
 The single entry point. It:
-  registers shared infrastructure (`AddBuildingBlocksInfrastructure`);
-  calls `AddAuthModule`, `AddWeatherModule`, `AddDataTableModule`;
-  configures JWT bearer, CORS, rate limiting, Swagger, Hangfire, health checks;
-  hosts the controllers and the web middleware;
-  maps the module `Result`/`Error` values to HTTP responses.
+
+- registers shared infrastructure (`AddBuildingBlocksInfrastructure`);
+- calls `AddAuthModule`, `AddWeatherModule`, `AddDataTableModule`;
+- configures JWT bearer, CORS, rate limiting, OpenAPI + Scalar, Hangfire, health checks;
+- hosts the controllers and the web middleware;
+- maps the module `Result`/`Error` values to HTTP responses.
 
 It must not contain business logic and must not touch module internals beyond contracts and the DI
 extensions.
@@ -41,7 +42,7 @@ extensions.
 Each module is split into two projects:
 
 | Project | Contains | Depends on |
-|         |          |            |
+|---------|----------|------------|
 | `Modules.X` | `Domain`, `Features` (commands, queries, handlers, validators), `Contracts`, `Persistence` ports | `BuildingBlocks.Abstractions` |
 | `Modules.X.Infrastructure` | Dapper repositories, JWT/token services, jobs, `AddXModule` | `Modules.X`, `BuildingBlocks.*` |
 
@@ -49,10 +50,10 @@ Each module is split into two projects:
 
 ### BuildingBlocks
 
-  `BuildingBlocks.Abstractions` — technical contracts only: mediator interfaces, `ICurrentUser`,
+- `BuildingBlocks.Abstractions` — technical contracts only: mediator interfaces, `ICurrentUser`,
   `IDbConnectionFactory`, `IUnitOfWork`, `IDistributedCacheService`, `Entity`, `Specification`,
   pagination, cache/resilience markers. No business logic.
-  `BuildingBlocks.Infrastructure` — the mediator implementation, pipeline behaviors, Dapper/Redis
+- `BuildingBlocks.Infrastructure` — the mediator implementation, pipeline behaviors, Dapper/Redis
   primitives and health checks. It never references a module.
 
 ## Request flow
@@ -77,18 +78,26 @@ Results use **ResulTus 1.3.0**. A handler returns `Result<T>` (or `Result`). Fai
 
 `Arquitectura.Host.Web.ResultHttpExtensions` maps results to HTTP:
 
-  legacy codes keep their historical status (`NOT_FOUND` → 404, `VALIDATION_ERROR` → 400,
+- legacy codes keep their historical status (`NOT_FOUND` → 404, `VALIDATION_ERROR` → 400,
   `RETRY_EXHAUSTED` → 503, `TIMEOUT` → 504);
-  otherwise the status is derived from `ErrorType`;
-  `ErrorType.Failure` maps to 400 to preserve the legacy default for database failures;
-  the body is always `{ code, message, details }` (details currently `null`).
+- otherwise the status is derived from `ErrorType`;
+- `ErrorType.Failure` maps to 400 to preserve the legacy default for database failures;
+- the body is always `{ code, message, details }` (details currently `null`).
+
+## Security
+
+- JWT bearer authentication; the signing key is mandatory (`Jwt:Key`), with no hardcoded fallback.
+- Passwords use salted **PBKDF2-HMAC-SHA256** (210k iterations). Legacy SHA-256 hashes still verify and
+  are transparently rehashed on the next successful login.
+- An API key middleware protects the API in Production; it is bypassed in Development.
+- Security headers and non-cacheable sensitive paths are applied by middleware.
 
 ## Caching
 
 Caching is explicit, not a pipeline behavior. `Result<T>` is a readonly struct that does not
-round trip through a serializer, so `QueryCachingExtensions.GetOrSetAsync` caches only the successful
-payload of a query. Cache invalidation is opt in through `ICacheInvalidatingRequest`, which only the
-Weather write commands implement.
+round-trip through a serializer, so `QueryCachingExtensions.GetOrSetAsync` caches only the successful
+payload of a query. Cache invalidation is opt-in through `ICacheInvalidatingRequest`, which only the
+Weather write commands implement. The cache runs on the single shared Redis multiplexer.
 
 ## Background jobs
 
@@ -98,11 +107,16 @@ Hangfire is disabled so DI validation never fails in environments without a data
 
 ## Configuration
 
-Everything is Options based: `JwtOptions`, `RedisOptions`, `DatabaseOptions`, `ApiKey:Key`.
+Everything is Options-based: `JwtOptions`, `RedisOptions`, `DatabaseOptions`, `ApiKey:Key`.
 `Jwt:Key` is mandatory and validated at startup. There are no hardcoded secrets.
+
+## API documentation
+
+OpenAPI is generated at runtime by `Microsoft.AspNetCore.OpenApi` and served at `/openapi/v1.json`.
+Scalar renders the interactive reference at `/scalar`.
 
 ## Further reading
 
-  [MODULE_BOUNDARIES.md](MODULE_BOUNDARIES.md) — the enforceable rules.
-  [ENDPOINT_INVENTORY.md](ENDPOINT_INVENTORY.md) — the frozen HTTP contract.
-  [ADR/](ADR/) — the decision records.
+- [MODULE_BOUNDARIES.md](MODULE_BOUNDARIES.md) — the enforceable rules.
+- [ENDPOINT_INVENTORY.md](ENDPOINT_INVENTORY.md) — the frozen HTTP contract.
+- [ADR/](ADR/) — the decision records.

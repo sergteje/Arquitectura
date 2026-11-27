@@ -95,3 +95,13 @@ L7 Scalar (user request): replaced Swashbuckle with native OpenAPI + Scalar.
 - Host: `AddOpenApi()` + `MapOpenApi()` + `MapScalarApiReference()`. OpenAPI at `/openapi/v1.json`, UI at `/scalar`.
 - Exempted `/scalar` and `/openapi` from the API-key and audit middlewares; `launchUrl` now `scalar`.
 - Smoke test updated: `/openapi/v1.json` 200 and `/scalar` 200 text/html. 59 tests pass.
+
+L8 Cleanup of remaining debt (user request, one by one):
+1. Added `sp_DeleteUserTableConfig.sql` (audits `ChangeType='DELETE'` then deletes) and registered it in the SQL project.
+2. Replaced SHA-256 password hashing with salted PBKDF2-HMAC-SHA256 (210k iterations); legacy hashes still verify and rehash on successful login. `InternalsVisibleTo` lets tests exercise the hasher.
+3. Deleted the legacy `Arquitectura.Api/Application/Domain/Infrastructure/Persistence` projects.
+4. Added `Arquitectura.Cli.slnf` (excludes `.sqlproj` + esproj); `dotnet build -c Release` passes.
+5. Removed the duplicate Redis connection: `RedisCacheService` and `RedisHealthCheck` use the single `IConnectionMultiplexer`; dropped `Microsoft.Extensions.Caching.StackExchangeRedis`.
+6. `/health` and `/alive` are mapped in every environment (aggregate status only).
+7. Upgraded `MessagePack` to 3.1.12 (advisory gone) and replaced the obsolete Aspire `AddProject<T>` with `AddDotnetProject(name, path)`.
+Verification: `dotnet build Arquitectura.Cli.slnf -c Release` 0 errors/0 warnings; `dotnet test -c Release` 66/66.

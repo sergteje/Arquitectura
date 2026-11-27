@@ -4,60 +4,53 @@ Tracked known issues, ordered by impact. Each item names the affected area and t
 
 ## Open
 
-### 1. Missing `sp_DeleteUserTableConfig` stored procedure
-- **Where**: `Modules/DataTable/Modules.DataTable.Infrastructure/Persistence/DataTableRepository.cs`
-  (`ResetUserConfigAsync`), `Arquitectura.Database`.
-- **Impact**: `DELETE /api/datatable/{tableKey}/config` calls a stored procedure that does not exist;
-  the repository catches the failure and the endpoint returns an error.
-- **Fix**: add `sp_DeleteUserTableConfig` to the SQL project and deploy it. Documented, intentionally
-  not fixed during the structural migration (ADR-008).
+### 1. Legacy password hashes are upgraded lazily
+- **Where**: `Modules/Auth/Modules.Auth/Features/Auth/PasswordHasher.cs`,
+  `Features/Auth/Handlers/AuthHandlers.cs`.
+- **Context**: new hashes use PBKDF2-HMAC-SHA256 with a random salt. Existing unsalted SHA-256 hashes
+  still verify and are rehashed automatically on the next successful login.
+- **Impact**: accounts that never log in again keep the legacy hash indefinitely.
+- **Fix**: optionally add a one-off background migration that rehashes known credentials, or force a
+  password reset for dormant accounts.
 
-### 2. Password hashing uses unsalted SHA-256
-- **Where**: `Modules/Auth/Modules.Auth/Features/Auth/PasswordHasher.cs`.
-- **Impact**: weak against rainbow tables; no per-user salt.
-- **Fix**: migrate to a salted KDF (PBKDF2/Argon2) with a rehash-on-login strategy. Requires a data
-  migration path for existing hashes.
+### 2. `RedisCacheService` uses Newtonsoft.Json
+- **Where**: `BuildingBlocks/BuildingBlocks.Infrastructure/Caching/RedisCacheService.cs`.
+- **Impact**: an extra serializer dependency alongside `System.Text.Json`.
+- **Fix**: migrate to `System.Text.Json` and drop the Newtonsoft reference once no other code needs it.
 
-### 3. Duplicate Redis connections
-- **Where**: `BuildingBlocks/.../DependencyInjection/BuildingBlocksServiceCollectionExtensions.cs`.
-- **Impact**: `AddStackExchangeRedisCache` and the separately registered `IConnectionMultiplexer`
-  open two connection pools.
-- **Fix**: build the distributed cache on top of the registered multiplexer, or drop the extra
-  multiplexer if nothing else uses it.
+### 3. `DatabaseHealthCheck` hardcodes the Weather table
+- **Where**: `Arquitectura.Host/Web/HealthChecks/DatabaseHealthCheck.cs`.
+- **Impact**: a database check coupled to one module's table.
+- **Fix**: replace with a generic `SELECT 1` connectivity check (the existing `SqlServerHealthCheck`
+  already covers this), or move the table-specific check into the Weather module.
 
-### 4. Health endpoints are Development-only
-- **Where**: `Arquitectura.ServiceDefaults/Extensions.cs` (`MapDefaultEndpoints`).
-- **Impact**: the production container health check (`/health`) is not mapped in Production.
-- **Fix**: map a minimal, unauthenticated liveness endpoint in all environments (or make the
-  container health check environment-aware).
+### 4. Health endpoints are public
+- **Where**: `Arquitectura.ServiceDefaults/Extensions.cs`.
+- **Impact**: `/health` and `/alive` are anonymous in every environment. They expose only the aggregate
+  status, never check details, but are reachable.
+- **Fix**: restrict at the network/gateway layer if the deployment requires it.
 
-### 5. Pre-existing `MessagePack` advisory
-- **Where**: `Arquitectura.AppHost/Arquitectura.AppHost.csproj` (MessagePack 3.1.7).
-- **Impact**: `NU1902` moderate-severity advisory during restore.
-- **Fix**: upgrade MessagePack or remove the direct reference if Aspire no longer needs it.
+## Resolved
 
-### 6. Legacy projects still on disk
-- **Where**: `Arquitectura.Api`, `Arquitectura.Application`, `Arquitectura.Domain`,
-  `Arquitectura.Infrastructure`, `Arquitectura.Persistence`.
-- **Impact**: dead code; only excluded from the solution.
-- **Fix**: delete after the migration is signed off.
-
-### 7. `.sqlproj` not buildable from the dotnet CLI
-- **Where**: `Arquitectura.Database/Arquitectura.Database.sqlproj`.
-- **Impact**: `dotnet build Arquitectura.slnx` fails for the SQL project on machines without SSDT.
-- **Fix**: build the SQL project with MSBuild/`sqlpackage`, or add a solution filter that excludes it
-  from CLI builds.
-
-## Resolved during the migration
-
-- Hand-rolled `Result`/`ResultError`/`ServiceErrors`/`ResultExtensions` replaced by ResulTus.
-- MediatR replaced by a first-party mediator (licensing + control).
-- Caching behavior that warmed the cache and still called the handler replaced by explicit
-  read-through caching.
-- Cache invalidation scoped to the Weather write commands instead of every non-query request.
-- Resilience retries limited to idempotent requests (`IResilientRequest`).
-- DataTable user id read from the `sub` claim (previously `userId`, which the JWT never emitted).
-- JWT signing key no longer falls back to a hardcoded secret.
-- `Application → Persistence` dependency removed.
-- `Domain` no longer references ASP.NET Core.
-- Weather Hangfire jobs owned by the Weather module.
+- **Missing `sp_DeleteUserTableConfig`** — added to `Arquitectura.Database/dbo/Stored Procedures`
+  and wired into the SQL project. `DELETE /api/datatable/{tableKey}/config` now works and records an
+  audit row with `ChangeType = 'DELETE'`.
+- **Unsalted SHA-256 password hashing** — replaced by salted PBKDF2-HMAC-SHA256 (210k iterations) with
+  transparent rehash on successful login; legacy hashes still verify.
+- **Duplicate Redis connections** — the distributed cache now runs on the single shared
+  `IConnectionMultiplexer`; `Microsoft.Extensions.Caching.StackExchangeRedis` was removed.
+- **Health endpoints Development-only** — `/health` and `/alive` are mapped in every environment.
+- **`MessagePack` advisory (NU1902)** — upgraded to 3.1.12.
+- **Legacy projects on disk** — `Arquitectura.Api`, `Application`, `Domain`, `Infrastructure` and
+  `Persistence` were deleted; the solution only contains the modular monolith.
+- **`.sqlproj` not buildable from the dotnet CLI** — `Arquitectura.Cli.slnf` excludes the SQL project
+  and the frontend esproj, so `dotnet build Arquitectura.Cli.slnf` works; use Visual Studio / SSDT or
+  `sqlpackage` to build and deploy `Arquitectura.Database`.
+- **Hand-rolled result pattern** — replaced by ResulTus 1.3.0.
+- **MediatR** — replaced by a first-party mediator.
+- **Caching behavior that still ran the handler on a hit** — replaced by explicit read-through caching.
+- **Cache invalidation on every non-query** — scoped to the Weather write commands.
+- **Retries on non-idempotent commands** — limited to `IResilientRequest`.
+- **DataTable user id read from `userId`** — now read from the `sub` claim.
+- **Hardcoded JWT fallback secret** — removed; `Jwt:Key` is mandatory.
+- **`Application → Persistence` and `Domain → ASP.NET Core` dependencies** — eliminated.
