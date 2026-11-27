@@ -85,6 +85,8 @@ public sealed class AuditTrailMiddleware(RequestDelegate next, ILogger<AuditTrai
         path.StartsWithSegments("/health")
         || path.StartsWithSegments("/alive")
         || path.StartsWithSegments("/swagger")
+        || path.StartsWithSegments("/scalar")
+        || path.StartsWithSegments("/openapi")
         || path.StartsWithSegments("/hangfire")
         || path.StartsWithSegments("/metrics");
 }

@@ -33,9 +33,9 @@ public class EndpointSmokeTests : IClassFixture<WebApplicationFactory<global::Pr
     }
 
     [Fact]
-    public async Task SwaggerDocument_IsServed()
+    public async Task OpenApiDocument_IsServed()
     {
-        var response = await _client.GetAsync("/swagger/v1/swagger.json", Token);
+        var response = await _client.GetAsync("/openapi/v1.json", Token);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync(Token);
@@ -43,6 +43,15 @@ public class EndpointSmokeTests : IClassFixture<WebApplicationFactory<global::Pr
         normalized.Should().Contain("/api/auth/login");
         normalized.Should().Contain("/api/weatherforecast");
         normalized.Should().Contain("/api/datatable/{tablekey}");
+    }
+
+    [Fact]
+    public async Task ScalarApiReference_IsServed()
+    {
+        var response = await _client.GetAsync("/scalar", Token);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("text/html");
     }
 
     [Fact]

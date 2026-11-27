@@ -85,6 +85,8 @@ public sealed class ApiKeyMiddleware(
 
     private static bool IsExempt(PathString path) =>
         path.StartsWithSegments("/swagger")
+        || path.StartsWithSegments("/scalar")
+        || path.StartsWithSegments("/openapi")
         || path.StartsWithSegments("/hangfire")
         || path.StartsWithSegments("/health")
         || path.StartsWithSegments("/alive")

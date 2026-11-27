@@ -13,6 +13,7 @@ using Modules.Auth.Infrastructure.DependencyInjection;
 using Modules.DataTable.Infrastructure.DependencyInjection;
 using Modules.Weather.Infrastructure.DependencyInjection;
 using Modules.Weather.Infrastructure.Jobs;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,8 +100,7 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddResponseCaching();
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -171,12 +171,6 @@ app.UseCors("AllowAll");
 app.UseSecurityHeaders();
 app.UseRateLimiter();
 app.UseApiKey();
-app.UseSwagger();
-app.UseSwaggerUI(options =>
-{
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Arquitectura API v1");
-    options.RoutePrefix = "swagger";
-});
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -187,6 +181,8 @@ app.UseRequestResponseLogging();
 app.UseExceptionHandler();
 
 app.MapControllers();
+app.MapOpenApi();
+app.MapScalarApiReference();
 app.MapDefaultEndpoints();
 
 app.Run();
