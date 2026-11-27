@@ -38,8 +38,6 @@ public static class ResultHttpExtensions
     /// <returns>The HTTP result.</returns>
     public static IResult ToErrorResult(Error error)
     {
-        ArgumentNullException.ThrowIfNull(error);
-
         return Results.Json(
             new ErrorResponse(error.Code ?? string.Empty, error.Message ?? string.Empty),
             statusCode: StatusCodeFor(error));
