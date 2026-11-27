@@ -30,6 +30,11 @@ Tracked known issues, ordered by impact. Each item names the affected area and t
   status, never check details, but are reachable.
 - **Fix**: restrict at the network/gateway layer if the deployment requires it.
 
+### 5. Database error details are exposed to clients
+- **Where**: `CommonErrors.Database(string detail)` and the repositories that pass `exception.Message`.
+- **Impact**: problem details can leak SQL Server messages (table names, constraints).
+- **Fix**: return a generic `DATABASE_ERROR` message and log the exception server-side.
+
 ## Resolved
 
 - **Missing `sp_DeleteUserTableConfig`** — added to `Arquitectura.Database/dbo/Stored Procedures`
