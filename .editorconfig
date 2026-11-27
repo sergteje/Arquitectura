@@ -1,0 +1,13 @@
+root = true
+
+[*.cs]
+# ResulTus analyzers: a dropped failure path is a bug, not a style opinion. RESULT004 stays a
+# suggestion because "Bind that only wraps a success" is a readability trade, not a defect.
+dotnet_diagnostic.RESULT001.severity = error
+dotnet_diagnostic.RESULT002.severity = error
+dotnet_diagnostic.RESULT003.severity = error
+dotnet_diagnostic.RESULT004.severity = suggestion
+dotnet_diagnostic.RESULT005.severity = error
+dotnet_diagnostic.RESULT006.severity = error
+dotnet_diagnostic.RESULT007.severity = error
+dotnet_diagnostic.RESULT008.severity = error

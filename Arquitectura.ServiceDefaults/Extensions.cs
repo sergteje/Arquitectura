@@ -6,9 +6,9 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using ResulTus.Diagnostics;
 using Serilog;
 using Serilog.Extensions.Logging;
-using Serilog.Sinks.OpenTelemetry;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -60,11 +60,17 @@ public static class Extensions
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
+                    .AddMeter(ResultMetrics.MeterName)
                     .AddPrometheusExporter();
             })
             .WithTracing(tracing =>
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
+                    .AddSource(ResultDiagnostics.SourceName)
+                    // The data providers do not publish spans on their own. These two adapters turn
+                    // their diagnostics into activities, so a slow request shows the query behind it.
+                    .AddSqlClientInstrumentation()
+                    .AddRedisInstrumentation()
                     .AddAspNetCoreInstrumentation(tracing =>
                         tracing.Filter = context =>
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
@@ -88,17 +94,22 @@ public static class Extensions
             builder.Services.AddOpenTelemetry().UseOtlpExporter();
         }
 
-        var useSeqOtlp = !string.IsNullOrWhiteSpace(builder.Configuration["SERILOG_WRITE__TO__OPENTELEMETRY__OTLPENDPOINT"]);
-        if (useSeqOtlp)
+        var seqUrl = builder.Configuration["Seq:Url"];
+        if (!string.IsNullOrWhiteSpace(seqUrl))
         {
+            if (builder.Environment.IsDevelopment())
+            {
+                // Surfaces a failing log sink on stderr instead of dropping events silently.
+                Serilog.Debugging.SelfLog.Enable(Console.Error);
+            }
+
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
-                .WriteTo.OpenTelemetry(options =>
-                {
-                    options.Endpoint = builder.Configuration["SERILOG_WRITE__TO__OPENTELEMETRY__OTLPENDPOINT"]!;
-                })
+                // Seq's own sink speaks CLEF over HTTP. Its OTLP ingest aborted the OTLP sink's
+                // batches, so traces and metrics travel over OTLP while logs use this transport.
+                .WriteTo.Seq(seqUrl)
                 .CreateLogger();
 
             builder.Services.AddSerilog(Log.Logger);

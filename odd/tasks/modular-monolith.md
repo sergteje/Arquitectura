@@ -37,6 +37,8 @@ S14. Tests: unit, integration, architecture (module isolation) and endpoint regr
 S15. Docker (root `Dockerfile` + `docker-compose.yml`), Aspire AppHost and the React client keep working.
 S16. Documentation updated: `README.md`, `AGENTS.md`, `ARCHITECTURE.md`, `MODULE_BOUNDARIES.md`, `ENDPOINT_INVENTORY.md`, `DEPLOYMENT.md`, `TECHNICAL_DEBT.md`, `ADR/`.
 S17. The mediator contract carries the validation payload: `IRequestHandler<TRequest,TResponse>` returns `Task<Result<TResponse, RequestError>>`, where `RequestError` pairs an `Error` with the optional `ValidationErrors`. `ValidationBehavior` returns that failure instead of throwing `RequestValidationException`. Handlers compose the single-error `Result<T>` tier internally and cross into the mediator tier once (`ToRequestResult`/`ToUnitRequestResult`). No exception remains in the application layer, and no HTTP contract changes.
+S18. Observability covers every hop: one `ResulTus.Diagnostics` span and one `ResultMetrics.Record` measurement per mediator request, SQL Server and Redis instrumentation, and `CorrelationId`/`TraceId`/`SpanId` in the log scope so a log entry joins its span.
+S19. Log hygiene: request/response bodies are logged at `Debug` only and pass through `LogBodyRedactor`, which masks credential-shaped members and omits non-JSON bodies. The ResulTus analyzers are pinned to `error` in `.editorconfig`.
 
 ## Tasks
 
@@ -168,3 +170,12 @@ L15 Full mediator contract change (user request: "Cambio completo"):
 - Tests added: `ValidationBehaviorTests` (3) and `RequestResultHttpResultsTests` (4).
 - Documented in ADR-011, `ARCHITECTURE.md` and AGENTS rule 12.
 Verification: Release build 0 errors/0 warnings; `dotnet test` 78/78; E2E 11/11.
+
+L16 Observability and log hygiene (user request: "Dale con todo"):
+- P0 (security): `RequestResponseLoggingMiddleware` logged full bodies, so login passwords and issued tokens reached the log sink. Bodies now log at `Debug` only and pass through `LogBodyRedactor`, which masks password/token-shaped members and omits non-JSON. Verified against Seq: zero occurrences of the test password or any JWT.
+- P1: `ResulTus.Diagnostics` adopted. `DiagnosticsBehavior` is the outermost behavior and publishes one span (`resul_tus.*` tags) plus one `ResultMetrics.Record` measurement per request; ServiceDefaults subscribes to the `ResulTus` source and meter. `Measure` covers only the single-error tier, so the behavior composes the same primitives `Measure` uses internally.
+- P2: `OpenTelemetry.Instrumentation.SqlClient` and `OpenTelemetry.Instrumentation.StackExchangeRedis` added; a trace now decomposes HTTP -> mediator -> Redis/SQL.
+- P3: `CorrelationIdMiddleware` pushes `CorrelationId`/`TraceId`/`SpanId` into a log scope; body logging moved to `Debug`; validation rejections log field names from `ValidationBehavior` (the `LoggingBehavior` variant was dead code because validation short-circuits before it).
+- P4: `.editorconfig` pins RESULT001-003/005-008 to `error` and RESULT004 to `suggestion`.
+- Defects found and fixed while verifying: the Prometheus exporter (1.15.2-beta.1) served an empty `/metrics` (bumped to 1.21.0-beta.1); Serilog never activated because `IConfiguration["SERILOG_WRITE__TO__..."]` never matches (env vars normalise `__` to `:`), replaced by `Seq:Url`; compose pointed the log sink at Jaeger and Seq could not start (missing `SEQ_FIRSTRUN_NOAUTHENTICATION`); Seq pinned to 2024.3 (ingestion 5341, UI/API 5342).
+Verification: Release build 0 errors/0 warnings; `dotnet test` 83/83; live trace in Jaeger (`GET /api/weatherforecast/{id}` -> `mediator GetWeatherForecastByIdQuery` -> Redis GET -> `EXECUTE dbo.WeatherForecast_GetById`) and the same TraceId in Seq with the mediator SpanId; `/metrics` exposes `resul_tus_result_outcomes_total{outcome,error_type}`.

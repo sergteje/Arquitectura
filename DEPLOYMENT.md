@@ -38,8 +38,9 @@ health check keeps working in production; they expose only the aggregate status,
 | `Jwt:Issuer` | no | Defaults to `Arquitectura`. |
 | `Jwt:Audience` | no | Defaults to `ArquitecturaClients`. |
 | `ApiKey:Key` | production | Required by `ApiKeyMiddleware` in Production. |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | no | Enables the OTLP exporter. |
-| `SERILOG_WRITE__TO__OPENTELEMETRY__OTLPENDPOINT` | no | Enables the Serilog OTLP sink. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP endpoint for traces and metrics (`http://jaeger:4317`). |
+| `Seq:Url` | no | Enables the Serilog Seq sink. Uses Seq's ingestion URL (`http://seq:5341`), not the UI (`5342`). |
+| `OTEL_TRACES_ENDPOINT` / `SEQ_OTLP_ENDPOINT` | no | Compose-only overrides for the two values above. |
 
 Use environment variables (`Jwt__Key`, `ConnectionStrings__DefaultConnection`, …), user secrets, or a
 secret manager. Never commit secrets.

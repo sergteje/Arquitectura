@@ -1,11 +1,21 @@
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+
 namespace Arquitectura.Host.Web.Middleware;
 
 /// <summary>
-/// Propagates an <c>X-Correlation-Id</c> header (creating one when absent) and exposes it on the
-/// request items so logs can be correlated across hops.
+/// Propagates an <c>X-Correlation-Id</c> header (creating one when absent), exposes it on the
+/// request items, and pushes it into a log scope together with the current trace identifiers.
 /// </summary>
+/// <remarks>
+/// The scope is what makes the header useful: without it the identifier exists on the response and
+/// nowhere in the logs, so a client reporting it cannot be traced back to anything.
+/// </remarks>
 /// <param name="next">The next middleware.</param>
-public sealed class CorrelationIdMiddleware(RequestDelegate next)
+/// <param name="logger">The logger whose scope carries the identifiers.</param>
+public sealed class CorrelationIdMiddleware(
+    RequestDelegate next,
+    ILogger<CorrelationIdMiddleware> logger)
 {
     private const string CorrelationIdHeaderName = "X-Correlation-Id";
 
@@ -19,7 +29,15 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next)
         context.Items["CorrelationId"] = correlationId;
         context.Response.Headers[CorrelationIdHeaderName] = correlationId;
 
-        await next(context);
+        using (logger.BeginScope(new Dictionary<string, object?>
+               {
+                   ["CorrelationId"] = correlationId,
+                   ["TraceId"] = Activity.Current?.TraceId.ToString(),
+                   ["SpanId"] = Activity.Current?.SpanId.ToString()
+               }))
+        {
+            await next(context);
+        }
     }
 
     private static string GetOrCreateCorrelationId(HttpContext context)
