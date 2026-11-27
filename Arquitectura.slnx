@@ -1,7 +1,5 @@
 <Solution>
-  <Project Path="Arquitectura.Api/Arquitectura.Api.csproj" />
   <Project Path="Arquitectura.AppHost/Arquitectura.AppHost.csproj" />
-  <Project Path="Arquitectura.Application/Arquitectura.Application.csproj" />
   <Project Path="Arquitectura.Client/Arquitectura.Client.esproj">
     <Build />
     <Deploy />
@@ -10,9 +8,15 @@
     <Build />
     <Deploy />
   </Project>
-  <Project Path="Arquitectura.Domain/Arquitectura.Domain.csproj" />
-  <Project Path="Arquitectura.Infrastructure/Arquitectura.Infrastructure.csproj" />
-  <Project Path="Arquitectura.Persistence/Arquitectura.Persistence.csproj" />
+  <Project Path="Arquitectura.Host/Arquitectura.Host.csproj" />
   <Project Path="Arquitectura.ServiceDefaults/Arquitectura.ServiceDefaults.csproj" />
   <Project Path="Arquitectura.Tests/Arquitectura.Tests.csproj" />
+  <Project Path="BuildingBlocks/BuildingBlocks.Abstractions/BuildingBlocks.Abstractions.csproj" />
+  <Project Path="BuildingBlocks/BuildingBlocks.Infrastructure/BuildingBlocks.Infrastructure.csproj" />
+  <Project Path="Modules/Auth/Modules.Auth/Modules.Auth.csproj" />
+  <Project Path="Modules/Auth/Modules.Auth.Infrastructure/Modules.Auth.Infrastructure.csproj" />
+  <Project Path="Modules/DataTable/Modules.DataTable/Modules.DataTable.csproj" />
+  <Project Path="Modules/DataTable/Modules.DataTable.Infrastructure/Modules.DataTable.Infrastructure.csproj" />
+  <Project Path="Modules/Weather/Modules.Weather/Modules.Weather.csproj" />
+  <Project Path="Modules/Weather/Modules.Weather.Infrastructure/Modules.Weather.Infrastructure.csproj" />
 </Solution>

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9801877c-4779-49a5-ab25-52533e3987d6</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <AspireProjectType>webapi</AspireProjectType>
+    <RootNamespace>Arquitectura.Host</RootNamespace>
+    <Description>Composition root: the single ASP.NET Core entry point that hosts the modules.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.25" />
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.25" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="11.0.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="11.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Arquitectura.ServiceDefaults\Arquitectura.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Auth\Modules.Auth.Infrastructure\Modules.Auth.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\DataTable\Modules.DataTable.Infrastructure\Modules.DataTable.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Weather\Modules.Weather.Infrastructure\Modules.Weather.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

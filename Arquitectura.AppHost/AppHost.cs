@@ -1,6 +1,6 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var api = builder.AddProject<Projects.Arquitectura_Api>("api")
+var api = builder.AddProject<Projects.Arquitectura_Host>("api")
     .WithHttpHealthCheck("/health");
 
 // Frontend React/Vite

@@ -1,32 +1,16 @@
 # Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
-# Copy solution and project files
-COPY ["Arquitectura.slnx", "./"]
-COPY ["Arquitectura.Api/Arquitectura.Api.csproj", "Arquitectura.Api/"]
-COPY ["Arquitectura.Domain/Arquitectura.Domain.csproj", "Arquitectura.Domain/"]
-COPY ["Arquitectura.Application/Arquitectura.Application.csproj", "Arquitectura.Application/"]
-COPY ["Arquitectura.Infrastructure/Arquitectura.Infrastructure.csproj", "Arquitectura.Infrastructure/"]
-COPY ["Arquitectura.Persistence/Arquitectura.Persistence.csproj", "Arquitectura.Persistence/"]
-COPY ["Arquitectura.ServiceDefaults/Arquitectura.ServiceDefaults.csproj", "Arquitectura.ServiceDefaults/"]
-COPY ["Arquitectura.Tests/Arquitectura.Tests.csproj", "Arquitectura.Tests/"]
-
-# Restore dependencies
-RUN dotnet restore "Arquitectura.Api/Arquitectura.Api.csproj"
-
-# Copy all source code
+# Copy the whole tree so restore can see every referenced project.
 COPY . .
 
-# Build
-WORKDIR "/src/Arquitectura.Api"
-RUN dotnet build "Arquitectura.Api.csproj" -c Release -o /app/build
-
-# Publish
-RUN dotnet publish "Arquitectura.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+# Restore and publish the host (the single entry point).
+RUN dotnet restore "Arquitectura.Host/Arquitectura.Host.csproj"
+RUN dotnet publish "Arquitectura.Host/Arquitectura.Host.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 
 # Install curl for health checks
@@ -48,8 +32,8 @@ USER arquitectura
 EXPOSE 8080
 EXPOSE 8081
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check (the /health endpoint is mapped in Development, which docker-compose sets)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # Set environment variables
@@ -58,4 +42,4 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_RUNNING_IN_CONTAINER=true
 
 # Entry point
-ENTRYPOINT ["dotnet", "Arquitectura.Api.dll"]
+ENTRYPOINT ["dotnet", "Arquitectura.Host.dll"]
