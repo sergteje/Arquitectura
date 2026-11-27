@@ -20,7 +20,7 @@ public sealed class LoginCommandHandler(IUserRepository userRepository, IJwtToke
     public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var userResult = await userRepository.GetByEmailAsync(request.Request.Email, cancellationToken);
-        if (!userResult.TryGetValue(out var user))
+        if (!userResult.TryGetValue(out var user) || user is null)
         {
             return Result<AuthResponse>.Failure(
                 Error.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password"));
@@ -99,7 +99,7 @@ public sealed class RegisterCommandHandler(IUserRepository userRepository, IJwtT
         };
 
         var createResult = await userRepository.CreateAsync(user, cancellationToken);
-        if (!createResult.TryGetValue(out user))
+        if (!createResult.TryGetValue(out user) || user is null)
         {
             return Result<AuthResponse>.Failure(
                 Error.Failure("AUTH_CREATE_FAILED", "Failed to create user"));
@@ -142,7 +142,7 @@ public sealed class RefreshTokenCommandHandler(IUserRepository userRepository, I
         }
 
         var userResult = await userRepository.GetByIdAsync(userId.Value, cancellationToken);
-        if (!userResult.TryGetValue(out var user))
+        if (!userResult.TryGetValue(out var user) || user is null)
         {
             return Result<RefreshTokenResponse>.Failure(
                 Error.Unauthorized("AUTH_USER_NOT_FOUND", "User not found"));
@@ -184,7 +184,7 @@ public sealed class LogoutCommandHandler(IUserRepository userRepository)
     public async Task<Result> Handle(LogoutCommand request, CancellationToken cancellationToken)
     {
         var userResult = await userRepository.GetByIdAsync(request.UserId, cancellationToken);
-        if (userResult.TryGetValue(out var user))
+        if (userResult.TryGetValue(out var user) && user is not null)
         {
             user.ClearRefreshToken();
 
