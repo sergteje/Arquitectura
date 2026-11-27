@@ -10,6 +10,7 @@ import { useTheme } from 'next-themes'
 import { Background } from '@/components/Background'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { APP_NAME, APP_TAGLINE, API_BASE } from '@/lib/constants'
+import { problemMessage } from '@/lib/problem'
 import { useAuthStore } from '@/stores/authStore'
 
 interface LoginResponse {
@@ -53,7 +54,7 @@ export default function Login() {
       })
       const data = await response.json()
       if (!response.ok) {
-        toast.error(data.detail || 'Login failed')
+        toast.error(problemMessage(data, 'Login failed'))
         return
       }
       const result = data as LoginResponse
@@ -86,7 +87,7 @@ export default function Login() {
       })
       const data = await response.json()
       if (!response.ok) {
-        toast.error(data.detail || 'Registration failed')
+        toast.error(problemMessage(data, 'Registration failed'))
         return
       }
       const result = data as LoginResponse

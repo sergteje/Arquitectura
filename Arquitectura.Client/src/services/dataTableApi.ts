@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/authStore'
+import { problemMessage } from '@/lib/problem'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8081'
 
@@ -80,8 +81,8 @@ export const dataTableApi = {
       headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: 'Failed to fetch config' }))
-      throw new Error(error.message || 'Failed to fetch config')
+      const error = await res.json().catch(() => null)
+      throw new Error(problemMessage(error, 'Failed to fetch config'))
     }
     return res.json()
   },
@@ -97,8 +98,8 @@ export const dataTableApi = {
       body: JSON.stringify(config),
     })
     if (!res.ok && res.status !== 204) {
-      const error = await res.json().catch(() => ({ message: 'Failed to save config' }))
-      throw new Error(error.message || 'Failed to save config')
+      const error = await res.json().catch(() => null)
+      throw new Error(problemMessage(error, 'Failed to save config'))
     }
   },
 
@@ -109,8 +110,8 @@ export const dataTableApi = {
       headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
     if (!res.ok && res.status !== 204) {
-      const error = await res.json().catch(() => ({ message: 'Failed to reset config' }))
-      throw new Error(error.message || 'Failed to reset config')
+      const error = await res.json().catch(() => null)
+      throw new Error(problemMessage(error, 'Failed to reset config'))
     }
   },
 
@@ -130,8 +131,8 @@ export const dataTableApi = {
       headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: 'Failed to fetch data' }))
-      throw new Error(error.message || 'Failed to fetch data')
+      const error = await res.json().catch(() => null)
+      throw new Error(problemMessage(error, 'Failed to fetch data'))
     }
     return res.json()
   },
@@ -147,8 +148,8 @@ export const dataTableApi = {
       body: JSON.stringify(request),
     })
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: 'Failed to create export' }))
-      throw new Error(error.message || 'Failed to create export')
+      const error = await res.json().catch(() => null)
+      throw new Error(problemMessage(error, 'Failed to create export'))
     }
     return res.json()
   },
