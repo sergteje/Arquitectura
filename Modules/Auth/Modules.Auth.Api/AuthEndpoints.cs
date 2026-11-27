@@ -1,0 +1,75 @@
+using BuildingBlocks.Abstractions.Identity;
+using BuildingBlocks.Abstractions.Mediator;
+using BuildingBlocks.AspNetCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Routing;
+using Modules.Auth.Contracts;
+
+namespace Modules.Auth.Api;
+
+/// <summary>Minimal API endpoints owned by the Auth module.</summary>
+public static class AuthEndpoints
+{
+    /// <summary>Maps the Auth module endpoints.</summary>
+    /// <param name="app">The endpoint route builder.</param>
+    /// <returns>The same endpoint route builder.</returns>
+    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/auth")
+            .WithTags("Authentication")
+            .RequireRateLimiting("fixed");
+
+        group.MapPost("/login", async (LoginRequest request, ISender sender, CancellationToken cancellationToken) =>
+                (await sender.Send(new LoginCommand(request), cancellationToken)).ToHttpResult())
+            .AllowAnonymous()
+            .Produces<AuthResponse>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/register", async (
+                RegisterRequest request,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await sender.Send(new RegisterCommand(request), cancellationToken);
+
+                return result.Match<IResult>(
+                    value => Results.Json(value, statusCode: StatusCodes.Status201Created),
+                    ResultHttpExtensions.ToErrorResult);
+            })
+            .AllowAnonymous()
+            .Produces<AuthResponse>(StatusCodes.Status201Created)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/refresh", async (
+                RefreshTokenRequest request,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+                (await sender.Send(new RefreshTokenCommand(request), cancellationToken)).ToHttpResult())
+            .RequireAuthorization()
+            .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/logout", async (
+                ICurrentUser currentUser,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                if (currentUser.UserId is { } userId)
+                {
+                    await sender.Send(new LogoutCommand(userId), cancellationToken);
+                }
+
+                return Results.NoContent();
+            })
+            .RequireAuthorization()
+            .Produces(StatusCodes.Status204NoContent);
+
+        return app;
+    }
+}
