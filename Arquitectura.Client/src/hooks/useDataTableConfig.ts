@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dataTableApi, type ColumnConfig, type SaveDataTableConfigRequest, type SortConfig } from '@/services/dataTableApi'
 
@@ -54,7 +54,7 @@ export function useDataTableConfig({ tableKey, pageSize = 20 }: UseDataTableConf
   const [hasChanges, setHasChanges] = useState(false)
 
   // Config from server
-  const config = serverConfig?.columns ?? []
+  const config = useMemo(() => serverConfig?.columns ?? [], [serverConfig])
   
   // Sync local state when server config loads (only if not already modified by user)
   if (serverConfig && visibleColumns.length === 0) {

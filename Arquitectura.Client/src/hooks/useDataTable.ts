@@ -41,10 +41,12 @@ export function useDataTable<T>({
 }: UseDataTableOptions<T>) {
   const dataTableConfig = useDataTableConfig({ tableKey, pageSize })
 
+  const { isColumnVisible } = dataTableConfig
+
   // Combinar config del backend con renders custom del frontend
   const columns = useMemo(() => {
-    return customColumns.filter(col => dataTableConfig.isColumnVisible(col.key))
-  }, [customColumns, dataTableConfig.visibleColumnKeys])
+    return customColumns.filter(col => isColumnVisible(col.key))
+  }, [customColumns, isColumnVisible])
 
   // Todas las columnas (para el dropdown de visibilidad)
   const allColumns = dataTableConfig.config
