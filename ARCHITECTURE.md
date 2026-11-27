@@ -78,7 +78,7 @@ HTTP request
 
 ## Result pattern
 
-Results use **ResulTus 1.3.0**. A handler returns `Result<T>` (or `Result`). Failures carry a typed
+Results use **ResulTus 1.4.0**. A handler returns `Result<T>` (or `Result`). Failures carry a typed
 `Error` with a stable `Code`, a `Message` and an `ErrorType`.
 
 `BuildingBlocks.AspNetCore.ResultStatus` maps results to HTTP:
@@ -92,7 +92,7 @@ Results use **ResulTus 1.3.0**. A handler returns `Result<T>` (or `Result`). Fai
 
 The result pipeline dogfoods the whole ResulTus suite: `Extensions` (`Ensure`), `AspNetCore`
 (ProblemDetails), `Validation` + `Validation.FluentValidation` (structured field errors),
-`SourceGenerators` (`[ResultErrors]` factories), `Logging` (login audit), `Testing` (assertions) and
+`SourceGenerators` (`[ResultErrors]` factories), `Logging` (pipeline behavior through `IResultOutcome`), `Testing` (assertions) and
 `Analyzers` (build-time checks).
 
 ## Security

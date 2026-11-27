@@ -135,3 +135,10 @@ L11 Full ResulTus dogfooding (user request): "Todos los paquetes de resultus los
 - Testing: `ShouldSucceed`/`ShouldFail` in `LoginCommandHandlerTests`.
 - Frontend: `src/lib/problem.ts` reads `detail`, then `errors`, then `title`; `weatherApi`/`dataTableApi` parse problem documents.
 Verification: Release build 0 errors/0 warnings; `dotnet test` 71/71; frontend lint/build OK; E2E 11/11.
+
+L12 ResulTus 1.4.0 dogfooding (user request): added the missing APIs to the packages, released them, and consumed them here.
+- ResulTus PR #29: `TryGetValue`/`TryGetError` on `Result<TSuccess, TError>`, `IResultOutcome` implemented by `Result`/`Result<T>`, and `ResulTus.Logging` overloads for the non-generic view. Version 1.4.0 (MINOR), API snapshots/changelog/docs updated, CI green.
+- Merged #29 and pushed `v1.4.0`; the release workflow published all 13 packages to nuget.org (verified 1.4.0 in the flat-container index).
+- Arquitectura: all ResulTus packages moved to 1.4.0 from nuget.org; the local feed/NuGet.config was removed. `LoggingBehavior` logs every result through `IResultOutcome` (expected client errors at Information); `LoginCommandHandler` no longer logs or takes a logger.
+- E2E: unique e-mail now uses `randomUUID()` instead of `Date.now()` to avoid parallel-worker collisions.
+Verification: Release build 0 errors/0 warnings; `dotnet test` 71/71; E2E 11/11.

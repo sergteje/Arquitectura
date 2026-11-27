@@ -195,7 +195,7 @@ package family. The goal is to exercise the packages in production-shaped code, 
 | `ResulTus.Validation` | `ValidationErrors`/`ValidationIssue` for structured failures |
 | `ResulTus.Validation.FluentValidation` | `ValidateAsync` inside the mediator validation behavior |
 | `ResulTus.SourceGenerators` | `[ResultErrors]`/`[ErrorFactory]` error factories per module |
-| `ResulTus.Logging` | `LogAll` on the login result (structured auth audit) |
+| `ResulTus.Logging` | `LogAll` in `LoggingBehavior` through `IResultOutcome` |
 | `ResulTus.Testing` | `ShouldSucceed`/`ShouldFail` in handler tests |
 | `ResulTus.Analyzers` | `RESULT001..008` as build-time warnings on every project |
 

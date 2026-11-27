@@ -1,41 +1,29 @@
 using BuildingBlocks.Abstractions.Mediator;
-using Microsoft.Extensions.Logging;
 using Modules.Auth.Contracts;
 using Modules.Auth.Domain;
+using Modules.Auth.Errors;
 using Modules.Auth.Persistence;
 using Modules.Auth.Services;
 using ResulTus;
 using ResulTus.Extensions;
-using ResulTus.Logging;
-
-using Modules.Auth.Errors;
 
 namespace Modules.Auth.Features.Auth.Handlers;
 
 /// <summary>Handles <see cref="LoginCommand"/>.</summary>
 /// <param name="userRepository">The user repository.</param>
 /// <param name="jwtTokenService">The token service.</param>
-/// <param name="logger">The logger used to audit the result.</param>
+/// <param name="jwtTokenService">The token service.</param>
 public sealed class LoginCommandHandler(
     IUserRepository userRepository,
-    IJwtTokenService jwtTokenService,
-    ILogger<LoginCommandHandler> logger)
+    IJwtTokenService jwtTokenService)
     : IRequestHandler<LoginCommand, Result<AuthResponse>>
 {
     private static readonly TimeSpan AccessTokenExpiration = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RefreshTokenExpiration = TimeSpan.FromDays(7);
 
     /// <inheritdoc />
-    public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
-    {
-        var result = await HandleCore(request, cancellationToken);
-        return result.LogAll(
-            logger,
-            error => error.Type is ErrorType.Unauthorized or ErrorType.Validation
-                ? LogLevel.Warning
-                : LogLevel.Error,
-            "Login attempt completed");
-    }
+    public Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
+        => HandleCore(request, cancellationToken);
 
     private async Task<Result<AuthResponse>> HandleCore(LoginCommand request, CancellationToken cancellationToken)
     {

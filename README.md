@@ -8,7 +8,7 @@
 - .NET 11 (ASP.NET Core Minimal API) + Aspire for local orchestration
 - Modular monolith: `Auth`, `Weather`, `DataTable` modules over shared `BuildingBlocks`
 - First-party lightweight mediator (commands, queries, pipeline behaviors)
-- [ResulTus 1.3.0](https://www.nuget.org/packages/ResulTus) result pattern
+- [ResulTus 1.4.0](https://www.nuget.org/packages/ResulTus) result pattern
 - Dapper + SQL Server (stored procedures)
 - JWT bearer authentication with PBKDF2 password hashing
 - Redis distributed cache

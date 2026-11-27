@@ -9,7 +9,6 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="ResulTus" />
     <PackageReference Include="ResulTus.Extensions" />
-    <PackageReference Include="ResulTus.Logging" />
     <PackageReference Include="ResulTus.SourceGenerators" />
   </ItemGroup>
 

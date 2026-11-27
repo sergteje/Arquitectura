@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using BuildingBlocks.Abstractions.Mediator;
 using Microsoft.Extensions.Logging;
+using ResulTus;
+using ResulTus.Logging;
 
 namespace BuildingBlocks.Infrastructure.Behaviors;
 
@@ -33,6 +35,19 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
                 "Handled {RequestName} in {ElapsedMilliseconds}ms",
                 requestName,
                 stopwatch.ElapsedMilliseconds);
+
+            if (response is IResultOutcome outcome)
+            {
+                _ = outcome.LogAll(
+                    logger,
+                    error => error.Type is ErrorType.Unauthorized
+                        or ErrorType.Forbidden
+                        or ErrorType.NotFound
+                        or ErrorType.Validation
+                        ? LogLevel.Information
+                        : LogLevel.Error);
+            }
+
             return response;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
