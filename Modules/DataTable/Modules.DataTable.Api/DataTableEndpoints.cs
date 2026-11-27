@@ -2,7 +2,6 @@ using System.Text.Json;
 using BuildingBlocks.Abstractions.Identity;
 using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.AspNetCore;
-using ResulTus.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +33,7 @@ public static class DataTableEndpoints
                 async userId => (await sender.Send(
                         new GetDataTableConfigQuery(tableKey, userId),
                         cancellationToken))
-                    .ToHttpResult(ResultStatus.Map),
+                    .ToHttpResult(),
                 error => Task.FromResult(error.ToProblemHttpResult())))
             .Produces<DataTableConfigResponseDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);

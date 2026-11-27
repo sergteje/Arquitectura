@@ -1,16 +1,17 @@
 using BuildingBlocks.Abstractions.Caching;
 using BuildingBlocks.Abstractions.Mediator;
 using Microsoft.Extensions.Logging;
+using ResulTus;
 
 namespace BuildingBlocks.Infrastructure.Behaviors;
 
 /// <summary>
-/// Evicts the cache prefixes declared by an <see cref="ICacheInvalidatingRequest"/> after it runs.
+/// Evicts the cache prefixes declared by an <see cref="ICacheInvalidatingRequest"/> after it succeeds.
 /// Requests that do not declare prefixes are untouched, so one module's commands never evict another
 /// module's cache entries.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
-/// <typeparam name="TResponse">The response type.</typeparam>
+/// <typeparam name="TResponse">The success payload type.</typeparam>
 /// <param name="cache">The distributed cache.</param>
 /// <param name="logger">The logger.</param>
 public sealed class CacheInvalidationBehavior<TRequest, TResponse>(
@@ -20,14 +21,14 @@ public sealed class CacheInvalidationBehavior<TRequest, TResponse>(
     where TRequest : notnull
 {
     /// <inheritdoc />
-    public async Task<TResponse> Handle(
+    public async Task<Result<TResponse, RequestError>> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
         var response = await next(cancellationToken);
 
-        if (request is not ICacheInvalidatingRequest invalidatingRequest)
+        if (request is not ICacheInvalidatingRequest invalidatingRequest || response.IsFailure)
         {
             return response;
         }

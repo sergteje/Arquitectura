@@ -78,8 +78,10 @@ HTTP request
 
 ## Result pattern
 
-Results use **ResulTus 1.4.0**. A handler returns `Result<T>` (or `Result`). Failures carry a typed
-`Error` with a stable `Code`, a `Message` and an `ErrorType`.
+Results use **ResulTus 1.4.0**. A handler returns `Result<TResponse, RequestError>`; inside the handler
+the business flow composes the single-error `Result<T>` tier and `ToRequestResult` crosses into the
+mediator contract once. Failures carry a typed `Error` with a stable `Code`, a `Message` and an
+`ErrorType`, plus the structured `ValidationErrors` when the request failed validation.
 
 `BuildingBlocks.AspNetCore.ResultStatus` maps results to HTTP:
 
@@ -97,8 +99,9 @@ The result pipeline dogfoods the whole ResulTus suite: `Extensions` (`Ensure`), 
 
 Handlers stay railway-oriented: they compose `Result` with `Bind`, `Ensure`, `Map` and `MapError`,
 and repositories capture infrastructure exceptions with `Result.TryAsync` instead of `try/catch`.
-The only exception left is `ValidationBehavior`, which carries structured `ValidationErrors`;
-`CurrentUser` exposes `Result<int> UserIdResult` for endpoint composition.
+No exception remains in the application layer: `ValidationBehavior` returns a failed
+`Result<TResponse, RequestError>` carrying `ValidationErrors`, and `CurrentUser` exposes
+`Result<int> UserIdResult` for endpoint composition.
 
 ## Security
 

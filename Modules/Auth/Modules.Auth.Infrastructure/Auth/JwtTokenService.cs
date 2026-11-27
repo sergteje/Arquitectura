@@ -4,7 +4,9 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Modules.Auth.Errors;
 using Modules.Auth.Services;
+using ResulTus;
 
 namespace Modules.Auth.Infrastructure.Auth;
 
@@ -54,7 +56,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
     }
 
     /// <inheritdoc />
-    public (int? UserId, string? Email) ValidateToken(string token)
+    public Result<TokenIdentity> ValidateToken(string token)
     {
         try
         {
@@ -76,13 +78,13 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             var jwtToken = (JwtSecurityToken)validatedToken;
             var emailClaim = jwtToken.Claims.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Email)?.Value;
 
-            return int.TryParse(jwtToken.Subject, out var id)
-                ? (id, emailClaim)
-                : (null, emailClaim);
+            return int.TryParse(jwtToken.Subject, out var id) && !string.IsNullOrWhiteSpace(emailClaim)
+                ? Result<TokenIdentity>.Success(new TokenIdentity(id, emailClaim))
+                : Result<TokenIdentity>.Failure(AuthErrors.InvalidRefreshToken());
         }
         catch
         {
-            return (null, null);
+            return Result<TokenIdentity>.Failure(AuthErrors.InvalidRefreshToken());
         }
     }
 }

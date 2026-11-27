@@ -1,12 +1,13 @@
 using BuildingBlocks.Abstractions.Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using ResulTus;
 
 namespace BuildingBlocks.Infrastructure.Mediator;
 
 /// <summary>
 /// Non-generic handle used by <see cref="Mediator"/> to reach a closed wrapper instance.
 /// </summary>
-/// <typeparam name="TResponse">The response type.</typeparam>
+/// <typeparam name="TResponse">The success payload type.</typeparam>
 public abstract class RequestHandlerWrapper<TResponse>
 {
     /// <summary>
@@ -14,22 +15,26 @@ public abstract class RequestHandlerWrapper<TResponse>
     /// </summary>
     /// <param name="request">The request instance.</param>
     /// <param name="cancellationToken">Token that cancels the operation.</param>
-    /// <returns>The response produced by the pipeline.</returns>
-    public abstract Task<TResponse> Handle(IRequest<TResponse> request, CancellationToken cancellationToken);
+    /// <returns>The result produced by the pipeline.</returns>
+    public abstract Task<Result<TResponse, RequestError>> Handle(
+        IRequest<TResponse> request,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>
 /// Builds the behavior chain for one request/response pair and invokes the handler.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
-/// <typeparam name="TResponse">The response type.</typeparam>
+/// <typeparam name="TResponse">The success payload type.</typeparam>
 /// <param name="serviceProvider">The scoped service provider.</param>
 public sealed class RequestHandlerWrapper<TRequest, TResponse>(IServiceProvider serviceProvider)
     : RequestHandlerWrapper<TResponse>
     where TRequest : IRequest<TResponse>
 {
     /// <inheritdoc />
-    public override Task<TResponse> Handle(IRequest<TResponse> request, CancellationToken cancellationToken)
+    public override Task<Result<TResponse, RequestError>> Handle(
+        IRequest<TResponse> request,
+        CancellationToken cancellationToken)
     {
         var typedRequest = (TRequest)request;
         var handler = serviceProvider.GetRequiredService<IRequestHandler<TRequest, TResponse>>();

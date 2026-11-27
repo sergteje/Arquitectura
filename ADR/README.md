@@ -15,7 +15,7 @@ Consequences**.
 | ADR-008 | Missing `sp_DeleteUserTableConfig` documented, later added | Resolved |
 | ADR-009 | Minimal API endpoints owned by each module | Accepted |
 | ADR-010 | Dogfood the full ResulTus suite | Accepted |
-| ADR-011 | Railway-oriented handlers, exceptions only at the boundary | Accepted |
+| ADR-011 | Railway-oriented handlers, no exceptions in the application layer | Accepted |
 
 ---
 
@@ -207,8 +207,8 @@ package family. The goal is to exercise the packages in production-shaped code, 
   (`src/lib/problem.ts`).
 - `ResultStatus.Map` keeps the legacy status codes (including `Failure` → 400) and delegates the rest to
   `ResultHttpStatus.GetStatusCode`.
-- Validation runs before logging and throws `RequestValidationException` carrying `ValidationErrors`; the
-  host renders it through `ResulTus.AspNetCore`'s validation conversion.
+- Validation runs before logging and short-circuits with a failed `Result<TResponse, RequestError>`
+  carrying `ValidationErrors`; the host renders it through `ResulTus.AspNetCore`'s validation conversion.
 - Error codes and messages live in generated factories (`CommonErrors`, `AuthErrors`, `WeatherErrors`,
   `DataTableErrors`) instead of inline `Error.X("CODE", ...)` calls.
 - `ResulTus.Logging` logs every result inside `LoggingBehavior` through the non-generic
@@ -216,12 +216,12 @@ package family. The goal is to exercise the packages in production-shaped code, 
 
 ---
 
-## ADR-011 — Railway-oriented handlers, exceptions only at the boundary
+## ADR-011 — Railway-oriented handlers, no exceptions in the application layer
 
 **Context.** After the ResulTus migration, the HTTP edges were railway-oriented but the Auth handlers
 still used `TryGetValue`/`IsFailure`/early returns, the repositories caught every exception to build a
 `Result`, and `IJwtTokenService.ValidateToken` returned a nullable tuple. The owner asked for ROP
-through the application layer.
+through the application layer, and later for the last exception (request validation) to become data.
 
 **Decision.** Handlers compose `Result` with `Bind`/`Ensure`/`Map`/`MapError`; they do not inspect
 `IsSuccess` or `TryGetValue` in the middle of a flow. Repositories use `Result.TryAsync` and map the
@@ -229,16 +229,22 @@ captured exception to the module error (`CommonErrors.Database`, `DataTableError
 `try/catch` remains in persistence. `IJwtTokenService.ValidateToken` returns
 `Result<TokenIdentity>`.
 
-One boundary keeps an exception on purpose:
+The mediator contract carries the validation payload: `IRequestHandler<TRequest,TResponse>` returns
+`Task<Result<TResponse, RequestError>>`, where `RequestError` pairs an `Error` with the optional
+`ValidationErrors`. `ValidationBehavior` returns that failure instead of throwing
+`RequestValidationException`, which was deleted together with its host mapping. `CurrentUser` exposes
+`Result<int> UserIdResult`; endpoints compose it with `Match`.
 
-- `ValidationBehavior` throws `RequestValidationException` to carry structured `ValidationErrors`
-  through a mediator whose contract is `Result<TResponse>`.
+Handlers keep composing the single-error `Result<T>` tier internally and cross into the mediator tier
+once through `ToRequestResult`/`ToUnitRequestResult`, so the validation payload only exists at the
+pipeline boundary.
 
-`CurrentUser` exposes `Result<int> UserIdResult`; endpoints compose it with `Match`.
-
-**Consequences.** The application layer reads as a pipeline with a single failure path. The error code
-of a failed step survives unless the handler maps it deliberately. Persistence no longer duplicates
-exception handling. The validation boundary is documented and covered by tests; removing it would
-require changing the mediator contract.
+**Consequences.** The application layer has a single failure path and no exception at all: validation,
+identity, persistence and business errors arrive as results. The RFC 9457 `errors` member keeps its
+shape because `BuildingBlocks.AspNetCore` renders `RequestError.ValidationErrors` through
+`ResulTus.AspNetCore`. `BuildingBlocks.Abstractions` references `ResulTus.Validation` for that payload.
+`ResilienceBehavior` inspects results instead of exceptions, so it retries only infrastructure
+categories; its previous per-scope circuit breaker was removed because a scoped behavior cannot
+accumulate failures across requests, so it never actually opened.
 
 **Supersedes.** None. Complements ADR-010.

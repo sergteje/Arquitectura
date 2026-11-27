@@ -1,13 +1,12 @@
 using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.Abstractions.Pagination;
-using ResulTus;
 
 namespace Modules.Weather.Contracts;
 
 /// <summary>Reads one page of forecasts; cached and retried because it is idempotent.</summary>
 /// <param name="Pagination">The page selector.</param>
 public record GetWeatherForecastQuery(PaginationRequest Pagination)
-    : IQuery<Result<PaginatedResponse<WeatherForecastDto>>>, ICachableQuery, IResilientRequest
+    : IQuery<PaginatedResponse<WeatherForecastDto>>, ICachableQuery, IResilientRequest
 {
     /// <inheritdoc />
     public string GetCacheKey() => WeatherCacheKeys.ForPage(Pagination.Page, Pagination.PageSize);
@@ -16,7 +15,7 @@ public record GetWeatherForecastQuery(PaginationRequest Pagination)
 /// <summary>Reads a single forecast; cached and retried because it is idempotent.</summary>
 /// <param name="Id">The forecast identifier.</param>
 public record GetWeatherForecastByIdQuery(int Id)
-    : IQuery<Result<WeatherForecastDto>>, ICachableQuery, IResilientRequest
+    : IQuery<WeatherForecastDto>, ICachableQuery, IResilientRequest
 {
     /// <inheritdoc />
     public string GetCacheKey() => WeatherCacheKeys.ForId(Id);

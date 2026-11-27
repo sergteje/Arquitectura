@@ -1,12 +1,11 @@
 using BuildingBlocks.Abstractions.Mediator;
-using ResulTus;
 
 namespace Modules.Weather.Contracts;
 
 /// <summary>Creates a forecast and evicts the module cache.</summary>
 /// <param name="Request">The forecast payload.</param>
 public record CreateWeatherForecastCommand(CreateWeatherForecastRequest Request)
-    : ICommand<Result<WeatherForecastDto>>, ICacheInvalidatingRequest
+    : ICommand<WeatherForecastDto>, ICacheInvalidatingRequest
 {
     /// <inheritdoc />
     public IReadOnlyList<string> CacheKeyPrefixes => WeatherCacheKeys.Prefixes;
@@ -16,7 +15,7 @@ public record CreateWeatherForecastCommand(CreateWeatherForecastRequest Request)
 /// <param name="Id">The forecast identifier.</param>
 /// <param name="Request">The forecast payload.</param>
 public record UpdateWeatherForecastCommand(int Id, CreateWeatherForecastRequest Request)
-    : ICommand<Result<WeatherForecastDto>>, ICacheInvalidatingRequest
+    : ICommand<WeatherForecastDto>, ICacheInvalidatingRequest
 {
     /// <inheritdoc />
     public IReadOnlyList<string> CacheKeyPrefixes => WeatherCacheKeys.Prefixes;
@@ -25,7 +24,7 @@ public record UpdateWeatherForecastCommand(int Id, CreateWeatherForecastRequest 
 /// <summary>Deletes a forecast and evicts the module cache.</summary>
 /// <param name="Id">The forecast identifier.</param>
 public record DeleteWeatherForecastCommand(int Id)
-    : ICommand<Result>, ICacheInvalidatingRequest
+    : ICommand<Unit>, ICacheInvalidatingRequest
 {
     /// <inheritdoc />
     public IReadOnlyList<string> CacheKeyPrefixes => WeatherCacheKeys.Prefixes;

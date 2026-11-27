@@ -10,14 +10,14 @@ namespace BuildingBlocks.Infrastructure.Behaviors;
 /// Logs every request with its name, duration and outcome.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
-/// <typeparam name="TResponse">The response type.</typeparam>
+/// <typeparam name="TResponse">The success payload type.</typeparam>
 /// <param name="logger">The logger.</param>
 public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     /// <inheritdoc />
-    public async Task<TResponse> Handle(
+    public async Task<Result<TResponse, RequestError>> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
@@ -36,17 +36,20 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
                 requestName,
                 stopwatch.ElapsedMilliseconds);
 
-            if (response is IResultOutcome outcome)
-            {
-                _ = outcome.LogAll(
-                    logger,
-                    error => error.Type is ErrorType.Unauthorized
-                        or ErrorType.Forbidden
-                        or ErrorType.NotFound
-                        or ErrorType.Validation
-                        ? LogLevel.Information
-                        : LogLevel.Error);
-            }
+            // ResulTus.Logging covers the non-generic tier, so the domain error is projected into a
+            // Result just for logging; the validation payload stays in the original result.
+            var outcome = response.TryGetError(out var requestError) && requestError is not null
+                ? Result.Failure(requestError.Error)
+                : Result.Success();
+
+            _ = outcome.LogAll(
+                logger,
+                error => error.Type is ErrorType.Unauthorized
+                    or ErrorType.Forbidden
+                    or ErrorType.NotFound
+                    or ErrorType.Validation
+                    ? LogLevel.Information
+                    : LogLevel.Error);
 
             return response;
         }

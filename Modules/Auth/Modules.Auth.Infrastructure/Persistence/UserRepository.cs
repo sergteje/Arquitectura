@@ -1,9 +1,11 @@
 using System.Data;
+using System.Data.Common;
 using BuildingBlocks.Abstractions.Persistence;
 using Dapper;
 using Modules.Auth.Domain;
 using Modules.Auth.Persistence;
 using ResulTus;
+using ResulTus.Extensions;
 
 using BuildingBlocks.Abstractions.Errors;
 using Modules.Auth.Errors;
@@ -19,140 +21,123 @@ public sealed class UserRepository(IDbConnectionFactory connectionFactory) : IUs
     /// <inheritdoc />
     public async Task<Result<User>> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await using var connection = connectionFactory.CreateConnection();
-
-            var user = await connection.QueryFirstOrDefaultAsync<User>(
+        var loaded = await ExecuteAsync(
+            (connection, token) => connection.QueryFirstOrDefaultAsync<User>(
                 new CommandDefinition(
                     "sp_User_GetByEmail",
                     new { Email = email },
                     commandType: CommandType.StoredProcedure,
-                    cancellationToken: cancellationToken));
+                    cancellationToken: token)),
+            cancellationToken);
 
-            return user is not null
-                ? Result<User>.Success(user)
-                : Result<User>.Failure(AuthErrors.UserNotFoundByEmail(email));
-        }
-        catch (Exception exception)
-        {
-            return Result<User>.Failure(CommonErrors.Database(exception.Message));
-        }
+        return loaded.Bind(user => user is null
+            ? Result<User>.Failure(AuthErrors.UserNotFoundByEmail(email))
+            : Result<User>.Success(user));
     }
 
     /// <inheritdoc />
     public async Task<Result<User>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await using var connection = connectionFactory.CreateConnection();
-
-            var user = await connection.QueryFirstOrDefaultAsync<User>(
+        var loaded = await ExecuteAsync(
+            (connection, token) => connection.QueryFirstOrDefaultAsync<User>(
                 new CommandDefinition(
                     "sp_User_GetById",
                     new { Id = id },
                     commandType: CommandType.StoredProcedure,
-                    cancellationToken: cancellationToken));
+                    cancellationToken: token)),
+            cancellationToken);
 
-            return user is not null
-                ? Result<User>.Success(user)
-                : Result<User>.Failure(AuthErrors.UserNotFoundById(id));
-        }
-        catch (Exception exception)
-        {
-            return Result<User>.Failure(CommonErrors.Database(exception.Message));
-        }
+        return loaded.Bind(user => user is null
+            ? Result<User>.Failure(AuthErrors.UserNotFoundById(id))
+            : Result<User>.Success(user));
     }
 
     /// <inheritdoc />
-    public async Task<Result<User>> CreateAsync(User user, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            await using var connection = connectionFactory.CreateConnection();
-
-            var parameters = new
+    public Task<Result<User>> CreateAsync(User user, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            async (connection, token) =>
             {
-                user.Email,
-                user.PasswordHash,
-                user.FirstName,
-                user.LastName,
-                user.PhoneNumber,
-                user.CreatedBy
-            };
+                var parameters = new
+                {
+                    user.Email,
+                    user.PasswordHash,
+                    user.FirstName,
+                    user.LastName,
+                    user.PhoneNumber,
+                    user.CreatedBy
+                };
 
-            var id = await connection.ExecuteScalarAsync<int>(
-                new CommandDefinition(
-                    "sp_User_Create",
-                    parameters,
-                    commandType: CommandType.StoredProcedure,
-                    cancellationToken: cancellationToken));
+                user.Id = await connection.ExecuteScalarAsync<int>(
+                    new CommandDefinition(
+                        "sp_User_Create",
+                        parameters,
+                        commandType: CommandType.StoredProcedure,
+                        cancellationToken: token));
 
-            user.Id = id;
-            return Result<User>.Success(user);
-        }
-        catch (Exception exception)
-        {
-            return Result<User>.Failure(CommonErrors.Database(exception.Message));
-        }
-    }
+                return user;
+            },
+            cancellationToken);
 
     /// <inheritdoc />
-    public async Task<Result<User>> UpdateAsync(User user, CancellationToken cancellationToken = default)
+    public Task<Result<User>> UpdateAsync(User user, CancellationToken cancellationToken = default)
     {
-        try
+        var parameters = new
         {
-            await using var connection = connectionFactory.CreateConnection();
+            user.Id,
+            user.Email,
+            user.PasswordHash,
+            user.FirstName,
+            user.LastName,
+            user.PhoneNumber,
+            user.IsActive,
+            user.RefreshToken,
+            user.RefreshTokenExpiresAt,
+            user.LastLoginAt,
+            user.UpdatedBy
+        };
 
-            var parameters = new
+        return ExecuteAsync(
+            async (connection, token) =>
             {
-                user.Id,
-                user.Email,
-                user.PasswordHash,
-                user.FirstName,
-                user.LastName,
-                user.PhoneNumber,
-                user.IsActive,
-                user.RefreshToken,
-                user.RefreshTokenExpiresAt,
-                user.LastLoginAt,
-                user.UpdatedBy
-            };
+                await connection.ExecuteAsync(
+                    new CommandDefinition(
+                        "sp_User_Update",
+                        parameters,
+                        commandType: CommandType.StoredProcedure,
+                        cancellationToken: token));
 
-            await connection.ExecuteAsync(
-                new CommandDefinition(
-                    "sp_User_Update",
-                    parameters,
-                    commandType: CommandType.StoredProcedure,
-                    cancellationToken: cancellationToken));
-
-            return Result<User>.Success(user);
-        }
-        catch (Exception exception)
-        {
-            return Result<User>.Failure(CommonErrors.Database(exception.Message));
-        }
+                return user;
+            },
+            cancellationToken);
     }
 
     /// <inheritdoc />
     public async Task<Result<bool>> ExistsAsync(string email, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await using var connection = connectionFactory.CreateConnection();
-
-            var count = await connection.ExecuteScalarAsync<int>(
+        var count = await ExecuteAsync(
+            (connection, token) => connection.ExecuteScalarAsync<int>(
                 new CommandDefinition(
                     "sp_User_Exists",
                     new { Email = email },
                     commandType: CommandType.StoredProcedure,
-                    cancellationToken: cancellationToken));
+                    cancellationToken: token)),
+            cancellationToken);
 
-            return Result<bool>.Success(count > 0);
-        }
-        catch (Exception exception)
-        {
-            return Result<bool>.Failure(CommonErrors.Database(exception.Message));
-        }
+        return count.Map(value => value > 0);
+    }
+
+    private async Task<Result<T>> ExecuteAsync<T>(
+        Func<DbConnection, CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        var result = await Result.TryAsync(
+            async token =>
+            {
+                await using var connection = connectionFactory.CreateConnection();
+                return await operation(connection, token);
+            },
+            cancellationToken);
+
+        return result.MapError(error => CommonErrors.Database(error.Message ?? "Unknown database error"));
     }
 }

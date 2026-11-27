@@ -1,7 +1,6 @@
 using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.Abstractions.Pagination;
 using BuildingBlocks.AspNetCore;
-using ResulTus.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -43,7 +42,7 @@ public static class WeatherEndpoints
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapGet("/{id:int}", async (int id, ISender sender, CancellationToken cancellationToken) =>
-                (await sender.Send(new GetWeatherForecastByIdQuery(id), cancellationToken)).ToHttpResult(ResultStatus.Map))
+                (await sender.Send(new GetWeatherForecastByIdQuery(id), cancellationToken)).ToHttpResult())
             .Produces<WeatherForecastDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status429TooManyRequests);
@@ -68,7 +67,7 @@ public static class WeatherEndpoints
                 CreateWeatherForecastRequest request,
                 ISender sender,
                 CancellationToken cancellationToken) =>
-                (await sender.Send(new UpdateWeatherForecastCommand(id, request), cancellationToken)).ToHttpResult(ResultStatus.Map))
+                (await sender.Send(new UpdateWeatherForecastCommand(id, request), cancellationToken)).ToHttpResult())
             .Produces<WeatherForecastDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
