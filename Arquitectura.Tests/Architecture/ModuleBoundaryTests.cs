@@ -18,7 +18,11 @@ public class ModuleBoundaryTests
     private static readonly Assembly AuthContracts = typeof(global::Modules.Auth.Contracts.LoginCommand).Assembly;
     private static readonly Assembly WeatherContracts = typeof(global::Modules.Weather.Contracts.GetWeatherForecastQuery).Assembly;
     private static readonly Assembly DataTableContracts = typeof(global::Modules.DataTable.Contracts.GetDataTableConfigQuery).Assembly;
+    private static readonly Assembly AuthApi = typeof(global::Modules.Auth.Api.AuthEndpoints).Assembly;
+    private static readonly Assembly WeatherApi = typeof(global::Modules.Weather.Api.WeatherEndpoints).Assembly;
+    private static readonly Assembly DataTableApi = typeof(global::Modules.DataTable.Api.DataTableEndpoints).Assembly;
     private static readonly Assembly Abstractions = typeof(IRequest<>).Assembly;
+    private static readonly Assembly AspNetCoreBlocks = typeof(BuildingBlocks.AspNetCore.ResultHttpExtensions).Assembly;
     private static readonly Assembly BuildingBlocksInfrastructure =
         typeof(BuildingBlocks.Infrastructure.Mediator.Mediator).Assembly;
 
@@ -65,5 +69,41 @@ public class ModuleBoundaryTests
 
         references.Should().NotContain(name => name.StartsWith("Modules.", StringComparison.Ordinal));
         references.Should().NotContain(name => name.StartsWith("Arquitectura.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BuildingBlocksAspNetCore_DoesNotReferenceModules()
+    {
+        var references = ReferencedAssemblies(AspNetCoreBlocks);
+
+        references.Should().NotContain(name => name.StartsWith("Modules.", StringComparison.Ordinal));
+        references.Should().NotContain(name => name.StartsWith("Arquitectura.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AuthApi_DoesNotReferenceOtherModules()
+    {
+        var references = ReferencedAssemblies(AuthApi);
+
+        references.Should().NotContain(name => name.StartsWith("Modules.Weather", StringComparison.Ordinal));
+        references.Should().NotContain(name => name.StartsWith("Modules.DataTable", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void WeatherApi_DoesNotReferenceOtherModules()
+    {
+        var references = ReferencedAssemblies(WeatherApi);
+
+        references.Should().NotContain(name => name.StartsWith("Modules.Auth", StringComparison.Ordinal));
+        references.Should().NotContain(name => name.StartsWith("Modules.DataTable", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DataTableApi_DoesNotReferenceOtherModules()
+    {
+        var references = ReferencedAssemblies(DataTableApi);
+
+        references.Should().NotContain(name => name.StartsWith("Modules.Auth", StringComparison.Ordinal));
+        references.Should().NotContain(name => name.StartsWith("Modules.Weather", StringComparison.Ordinal));
     }
 }

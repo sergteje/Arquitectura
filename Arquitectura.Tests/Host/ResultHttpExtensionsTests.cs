@@ -1,7 +1,9 @@
-using Arquitectura.Host.Web;
+using System.Text;
+using BuildingBlocks.AspNetCore;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using ResulTus;
 using Xunit;
 
@@ -9,6 +11,25 @@ namespace Arquitectura.Tests.Host;
 
 public class ResultHttpExtensionsTests
 {
+    private static readonly IServiceProvider Services = new ServiceCollection()
+        .AddLogging()
+        .AddOptions()
+        .Configure<JsonOptions>(_ => { })
+        .BuildServiceProvider();
+
+    private static async Task<(int StatusCode, string Body)> ExecuteAsync(IResult result)
+    {
+        var context = new DefaultHttpContext { RequestServices = Services };
+        var body = new MemoryStream();
+        context.Response.Body = body;
+
+        await result.ExecuteAsync(context);
+
+        body.Position = 0;
+        using var reader = new StreamReader(body, Encoding.UTF8);
+        return (context.Response.StatusCode, await reader.ReadToEndAsync(TestContext.Current.CancellationToken));
+    }
+
     [Theory]
     [InlineData("NOT_FOUND", 404)]
     [InlineData("VALIDATION_ERROR", 400)]
@@ -42,40 +63,37 @@ public class ResultHttpExtensionsTests
     }
 
     [Fact]
-    public void ToErrorResult_PreservesCodeMessageAndDetailsShape()
+    public async Task ToErrorResult_PreservesCodeMessageAndDetailsShape()
     {
-        var error = Error.NotFound("WEATHERFORECAST_NOT_FOUND", "not here");
+        var result = ResultHttpExtensions.ToErrorResult(Error.NotFound("WEATHERFORECAST_NOT_FOUND", "not here"));
 
-        var result = ResultHttpExtensions.ToErrorResult(error);
+        var (statusCode, body) = await ExecuteAsync(result);
 
-        var objectResult = result.Should().BeOfType<ObjectResult>().Subject;
-        objectResult.StatusCode.Should().Be(StatusCodes.Status404NotFound);
-
-        var body = objectResult.Value.Should().BeOfType<ErrorResponse>().Subject;
-        body.Code.Should().Be("WEATHERFORECAST_NOT_FOUND");
-        body.Message.Should().Be("not here");
-        body.Details.Should().BeNull();
+        statusCode.Should().Be(StatusCodes.Status404NotFound);
+        body.Should().Contain("\"code\":\"WEATHERFORECAST_NOT_FOUND\"");
+        body.Should().Contain("\"message\":\"not here\"");
+        body.Should().Contain("\"details\":null");
     }
 
     [Fact]
-    public void ToActionResult_OnSuccess_Returns200WithValue()
+    public async Task ToHttpResult_OnSuccess_Returns200WithValue()
     {
-        var result = Result<int>.Success(42);
+        var result = Result<int>.Success(42).ToHttpResult();
 
-        var actionResult = result.ToActionResult();
+        var (statusCode, body) = await ExecuteAsync(result);
 
-        var objectResult = actionResult.Should().BeAssignableTo<ObjectResult>().Subject;
-        objectResult.StatusCode.Should().Be(StatusCodes.Status200OK);
-        objectResult.Value.Should().Be(42);
+        statusCode.Should().Be(StatusCodes.Status200OK);
+        body.Should().Be("42");
     }
 
     [Fact]
-    public void ToNoContentResult_OnSuccess_Returns204()
+    public async Task ToNoContentResult_OnSuccess_Returns204()
     {
-        var result = Result.Success();
+        var result = Result.Success().ToNoContentResult();
 
-        var actionResult = result.ToNoContentResult();
+        var (statusCode, body) = await ExecuteAsync(result);
 
-        actionResult.Should().BeOfType<NoContentResult>();
+        statusCode.Should().Be(StatusCodes.Status204NoContent);
+        body.Should().BeEmpty();
     }
 }
