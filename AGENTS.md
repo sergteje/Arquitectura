@@ -5,11 +5,11 @@
 ```
 Arquitectura.slnx
 ├── Backend (.NET 11)
-│   ├── Arquitectura.Host                  # Single entry point: controllers, middleware, DI composition
+│   ├── Arquitectura.Host                  # Single entry point: middleware, DI composition, endpoint maps
 │   ├── BuildingBlocks/
 │   │   ├── BuildingBlocks.Abstractions    # Mediator contracts, IDbConnectionFactory, IUnitOfWork,
 │   │   │                                  # IDistributedCacheService, ICurrentUser, Entity, Specification
-│   │   ├── BuildingBlocks.AspNetCore      # Result → IResult mapping ({code,message,details})
+│   │   ├── BuildingBlocks.AspNetCore      # Result → RFC 9457 ProblemDetails mapping
 │   │   └── BuildingBlocks.Infrastructure  # Mediator, behaviors, Dapper/Redis primitives, health checks
 │   ├── Modules/Auth/                      # Modules.Auth + .Api + .Infrastructure
 │   ├── Modules/Weather/                   # Modules.Weather + .Api + .Infrastructure
@@ -77,7 +77,7 @@ docker compose up -d   # Host + SQL Server + Redis + observability
    Minimal API map in `Modules.X.Api`. Other modules and the Host must not touch a module's `Domain`,
    `Features` or `Persistence`.
 3. **Minimal API**: endpoints live in `Modules.X.Api`, are grouped with `MapGroup`, and use
-   `BuildingBlocks.AspNetCore` (`ToHttpResult`, `ToNoContentResult`, `ErrorResponse`). Do not
+   `BuildingBlocks.AspNetCore` (`ResultStatus`, `ToHttpResult`, `ToNoContentResult`); errors are RFC 9457 ProblemDetails. Do not
    reintroduce MVC controllers.
 4. **No shared domain**: each module owns its entities and repositories. No cross-module entity reuse.
 5. **No circular dependencies**: modules never reference each other; communication is through contracts
@@ -123,10 +123,10 @@ docker compose up -d   # Host + SQL Server + Redis + observability
 ```
 src/components/  src/pages/  src/lib/constants.ts (API_BASE)
 ```
-The frontend expects `API_BASE = http://localhost:8081` and reads `error.message` from error bodies.
+The frontend defaults to `API_BASE = http://localhost:8080` and reads `detail`/`errors` through `src/lib/problem.ts`.
 HTTP contracts are frozen: see `ENDPOINT_INVENTORY.md`.
 
 ## Known Technical Debt
 
 Tracked in `TECHNICAL_DEBT.md`: lazy rehash of legacy password hashes, `Newtonsoft.Json` in the Redis
-cache, a table-specific database health check, and public health endpoints.
+cache, a table-specific database health check, public health endpoints, and database error details exposed in problem responses.
