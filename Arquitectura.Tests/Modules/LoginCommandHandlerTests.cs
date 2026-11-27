@@ -53,6 +53,7 @@ public class LoginCommandHandlerTests
         response!.AccessToken.Should().Be("access-token");
         response!.RefreshToken.Should().Be("refresh-token");
         response!.User.Email.Should().Be(user.Email);
+        user.PasswordHash.Should().StartWith("PBKDF2$", "the legacy hash is upgraded on successful login");
         repository.Verify(x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 

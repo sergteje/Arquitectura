@@ -38,6 +38,11 @@ public sealed class LoginCommandHandler(IUserRepository userRepository, IJwtToke
                 Error.Forbidden("AUTH_ACCOUNT_DISABLED", "Account is disabled"));
         }
 
+        if (PasswordHasher.NeedsRehash(user.PasswordHash))
+        {
+            user.PasswordHash = PasswordHasher.Hash(request.Request.Password);
+        }
+
         var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email);
         var refreshToken = jwtTokenService.GenerateRefreshToken();
 
