@@ -2,6 +2,7 @@ using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.Infrastructure.Behaviors;
 using FluentAssertions;
 using FluentValidation;
+using Microsoft.Extensions.Logging.Abstractions;
 using ResulTus;
 using ResulTus.Testing;
 using Xunit;
@@ -17,10 +18,14 @@ public class ValidationBehaviorTests
         public SampleValidator() => RuleFor(request => request.Name).NotEmpty();
     }
 
+    private static ValidationBehavior<SampleRequest, string> Behavior(
+        params IValidator<SampleRequest>[] validators) =>
+        new(validators, NullLogger<ValidationBehavior<SampleRequest, string>>.Instance);
+
     [Fact]
     public async Task Handle_WhenARuleFails_ReturnsValidationFailureWithoutCallingNext()
     {
-        var behavior = new ValidationBehavior<SampleRequest, string>([new SampleValidator()]);
+        var behavior = Behavior(new SampleValidator());
         var nextCalled = false;
 
         var result = await behavior.Handle(
@@ -43,7 +48,7 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_WhenRulesPass_ContinuesThePipeline()
     {
-        var behavior = new ValidationBehavior<SampleRequest, string>([new SampleValidator()]);
+        var behavior = Behavior(new SampleValidator());
 
         var result = await behavior.Handle(
             new SampleRequest("Ada"),
@@ -56,7 +61,7 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_WithNoValidator_ContinuesThePipeline()
     {
-        var behavior = new ValidationBehavior<SampleRequest, string>([]);
+        var behavior = Behavior();
 
         var result = await behavior.Handle(
             new SampleRequest(string.Empty),

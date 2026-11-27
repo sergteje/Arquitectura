@@ -5,21 +5,31 @@ using Microsoft.Extensions.Logging;
 namespace Arquitectura.Host.Web.Middleware;
 
 /// <summary>
-/// Logs request and response bodies (truncated) at the level implied by the status code.
+/// Logs the request and response bodies at <see cref="LogLevel.Debug"/>, with credentials masked.
 /// </summary>
+/// <remarks>
+/// Bodies are a debugging aid, not an audit record: the audit trail already logs method, path,
+/// status, duration and user. Keeping the body log at Debug means the default Information level
+/// carries one line per request instead of four, and enabling it never writes a password or a
+/// token — <see cref="LogBodyRedactor"/> masks those members and omits non-JSON bodies entirely.
+/// </remarks>
 /// <param name="next">The next middleware.</param>
 /// <param name="logger">The logger.</param>
 public sealed class RequestResponseLoggingMiddleware(
     RequestDelegate next,
     ILogger<RequestResponseLoggingMiddleware> logger)
 {
-    private const int MaxBodyLength = 1000;
-
     /// <summary>Runs the middleware.</summary>
     /// <param name="context">The current HTTP context.</param>
     /// <returns>A task that completes when the request finishes.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
+        if (!logger.IsEnabled(LogLevel.Debug))
+        {
+            await next(context);
+            return;
+        }
+
         var stopwatch = Stopwatch.StartNew();
         var requestBody = string.Empty;
 
@@ -57,49 +67,15 @@ public sealed class RequestResponseLoggingMiddleware(
 
     private void LogRequestResponse(HttpContext context, string requestBody, string responseBody, long elapsedMs)
     {
-        var logMessage = new StringBuilder();
-        logMessage.AppendLine("=== Request/Response Log ===");
-        logMessage.AppendLine($"Method: {context.Request.Method}");
-        logMessage.AppendLine($"Path: {context.Request.Path}{context.Request.QueryString}");
-        logMessage.AppendLine($"Status: {context.Response.StatusCode}");
-        logMessage.AppendLine($"Duration: {elapsedMs}ms");
-
-        if (!string.IsNullOrEmpty(requestBody))
-        {
-            logMessage.AppendLine($"Request Body: {TruncateForLogging(requestBody)}");
-        }
-
-        if (!string.IsNullOrEmpty(responseBody))
-        {
-            logMessage.AppendLine($"Response Body: {TruncateForLogging(responseBody)}");
-        }
-
-        logMessage.AppendLine("============================");
-
-        var message = logMessage.ToString();
-
-        if (context.Response.StatusCode >= 500)
-        {
-            logger.LogError("{Log}", message);
-        }
-        else if (context.Response.StatusCode >= 400)
-        {
-            logger.LogWarning("{Log}", message);
-        }
-        else
-        {
-            logger.LogInformation("{Log}", message);
-        }
-    }
-
-    private static string TruncateForLogging(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-        {
-            return string.Empty;
-        }
-
-        return content.Length <= MaxBodyLength ? content : content[..MaxBodyLength] + "... [truncated]";
+        logger.LogDebug(
+            "HTTP bodies {Method} {Path}{QueryString} -> {StatusCode} ({ElapsedMilliseconds}ms) | Request: {RequestBody} | Response: {ResponseBody}",
+            context.Request.Method,
+            context.Request.Path,
+            context.Request.QueryString,
+            context.Response.StatusCode,
+            elapsedMs,
+            LogBodyRedactor.Redact(requestBody),
+            LogBodyRedactor.Redact(responseBody));
     }
 }
 

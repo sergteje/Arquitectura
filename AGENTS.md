@@ -117,7 +117,7 @@ docker compose up -d   # Host + SQL Server + Redis + observability
 | Frontend | 5173 | Vite dev |
 | SQL Server | 1433 | Docker (see `.env`) |
 | Redis | 6379 | Docker |
-| Seq (logs) | 5341 | Docker |
+| Seq (logs) | 5341 ingest / 5342 UI | Docker |
 | Jaeger | 16686 | Docker |
 | Grafana | 3000 | Docker (admin/admin123) |
 | Hangfire | /hangfire | Development only |

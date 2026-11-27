@@ -16,6 +16,7 @@ Consequences**.
 | ADR-009 | Minimal API endpoints owned by each module | Accepted |
 | ADR-010 | Dogfood the full ResulTus suite | Accepted |
 | ADR-011 | Railway-oriented handlers, no exceptions in the application layer | Accepted |
+| ADR-012 | Result diagnostics, and logs that never carry a credential | Accepted |
 
 ---
 
@@ -248,3 +249,33 @@ categories; its previous per-scope circuit breaker was removed because a scoped 
 accumulate failures across requests, so it never actually opened.
 
 **Supersedes.** None. Complements ADR-010.
+
+---
+
+## ADR-012 - Result diagnostics, and logs that never carry a credential
+
+**Context.** The mediator logged through `ResulTus.Logging` only: no span, no metric, and no way to
+tell which handler a slow request spent its time in. Traces stopped at the HTTP span because the data
+providers' activity sources were never subscribed. The request/response middleware logged full bodies,
+which wrote login passwords and issued tokens to the log sink in clear text, and the correlation
+identifier was returned to the client but never entered a log scope.
+
+**Decision.** Adopt `ResulTus.Diagnostics`: `DiagnosticsBehavior` is the outermost pipeline behavior
+and publishes one span plus one `ResultMetrics.Record` measurement per request. ServiceDefaults
+subscribes to the `ResulTus` source and meter, and to the `Microsoft.Data.SqlClient` and
+`StackExchange.Redis` sources, so a trace decomposes HTTP -> mediator -> query. Body logging moves to
+`Debug` and passes through `LogBodyRedactor`, which masks credential-shaped members and omits non-JSON
+bodies. `CorrelationIdMiddleware` pushes `CorrelationId`, `TraceId` and `SpanId` into a log scope, and
+`LoggingBehavior` names the failing fields on a validation rejection. Logs travel over
+`Serilog.Sinks.Seq` (CLEF over HTTP): Seq's OTLP ingest aborted the OTLP sink's batches, so only
+traces and metrics use OTLP.
+
+**Consequences.** A slow request is decomposable in Jaeger and its outcome is countable in Prometheus
+without parsing logs. `Measure`/`MeasureAsync` do not cover `Result<TResponse, RequestError>`, so the
+behavior composes `ActivitySource` + `ResultMetrics.Record`, the two primitives `Measure` composes
+internally; typed-tier overloads upstream would let it call the helper instead. Raising the log level
+of bodies is a deliberate loss: bodies are a debugging aid, and the audit trail already records method,
+path, status, duration and user at Information. The ResulTus analyzers are pinned to `error` in
+`.editorconfig`, so a dropped failure path fails the build.
+
+**Supersedes.** None. Complements ADR-010 and ADR-011.

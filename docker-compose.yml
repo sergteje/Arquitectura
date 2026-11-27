@@ -18,12 +18,15 @@ services:
       - Jwt__Key=${JWT_KEY:-your-super-secret-key-min-32-chars-long!}
       - Jwt__Issuer=${JWT_ISSUER:-Arquitectura}
       - Jwt__Audience=${JWT_AUDIENCE:-ArquitecturaClients}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
-      - SERILOG_WRITE__TO__OPENTELEMETRY__OTLPENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_TRACES_ENDPOINT:-http://jaeger:4317}
+      # Logs go to Seq's OTLP ingest, never to the trace collector: Jaeger drops them.
+      - Seq__Url=${SEQ_URL:-http://seq:5341}
     depends_on:
       sqlserver:
         condition: service_healthy
       redis:
+        condition: service_started
+      seq:
         condition: service_started
     networks:
       - arquitectura-network
@@ -99,12 +102,14 @@ services:
 
   # Observability - Seq (Logs)
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2024.3
     container_name: arquitectura-seq
     restart: unless-stopped
     environment:
       - ACCEPT_EULA=Y
       - SEQ_FREEMODE_ENABLED=true
+      # Without this the image refuses to start: no admin password is supplied.
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
     ports:
       - "5341:5341"
       - "5342:80"
@@ -126,6 +131,7 @@ services:
       - "3000:3000"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus

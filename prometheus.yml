@@ -4,4 +4,6 @@ scrape_configs:
   - job_name: 'arquitectura-api'
     static_configs:
       - targets: ['api:8080']
+      # Local dev: lets a host-run API appear without rebuilding the container.
+      - targets: ['host.docker.internal:8080']
     metrics_path: '/metrics'
