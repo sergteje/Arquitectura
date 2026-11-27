@@ -63,7 +63,7 @@ public class EndpointSmokeTests : IClassFixture<WebApplicationFactory<global::Pr
     }
 
     [Fact]
-    public async Task Login_WithInvalidCredentials_ReturnsErrorBodyShape()
+    public async Task Login_WithInvalidCredentials_ReturnsRfc9457ProblemDetails()
     {
         var response = await _client.PostAsJsonAsync(
             "/api/auth/login",
@@ -71,11 +71,27 @@ public class EndpointSmokeTests : IClassFixture<WebApplicationFactory<global::Pr
             Token);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        response.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
 
         var body = await response.Content.ReadAsStringAsync(Token);
+        body.Should().Contain("\"status\":401");
         body.Should().Contain("\"code\"");
-        body.Should().Contain("\"message\"");
-        body.Should().Contain("\"details\"");
+        body.Should().Contain("\"detail\"");
+    }
+
+    [Fact]
+    public async Task Login_WithInvalidPayload_ReturnsValidationProblems()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "not-an-email", password = "" },
+            Token);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+
+        var body = await response.Content.ReadAsStringAsync(Token);
+        body.Should().Contain("\"errors\"");
+        body.Should().Contain("Request.Email");
     }
 }

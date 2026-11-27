@@ -5,11 +5,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using ResulTus;
+using ResulTus.AspNetCore;
 using Xunit;
 
 namespace Arquitectura.Tests.Host;
 
-public class ResultHttpExtensionsTests
+public class ResultHttpResultsTests
 {
     private static readonly IServiceProvider Services = new ServiceCollection()
         .AddLogging()
@@ -35,11 +36,9 @@ public class ResultHttpExtensionsTests
     [InlineData("VALIDATION_ERROR", 400)]
     [InlineData("RETRY_EXHAUSTED", 503)]
     [InlineData("TIMEOUT", 504)]
-    public void StatusCodeFor_LegacyCodes_KeepTheirStatus(string code, int expected)
+    public void Map_LegacyCodes_KeepTheirStatus(string code, int expected)
     {
-        var error = Error.Failure(code, "boom");
-
-        ResultHttpExtensions.StatusCodeFor(error).Should().Be(expected);
+        ResultStatus.Map(Error.Failure(code, "boom")).Should().Be(expected);
     }
 
     public static TheoryData<Error, int> ErrorTypeCases => new()
@@ -57,28 +56,28 @@ public class ResultHttpExtensionsTests
 
     [Theory]
     [MemberData(nameof(ErrorTypeCases))]
-    public void StatusCodeFor_ErrorTypes_MapToExpectedStatus(Error error, int expected)
+    public void Map_ErrorTypes_MapToExpectedStatus(Error error, int expected)
     {
-        ResultHttpExtensions.StatusCodeFor(error).Should().Be(expected);
+        ResultStatus.Map(error).Should().Be(expected);
     }
 
     [Fact]
-    public async Task ToErrorResult_PreservesCodeMessageAndDetailsShape()
+    public async Task ToProblemHttpResult_RendersRfc9457ProblemDetails()
     {
-        var result = ResultHttpExtensions.ToErrorResult(Error.NotFound("WEATHERFORECAST_NOT_FOUND", "not here"));
+        var result = Error.NotFound("WEATHERFORECAST_NOT_FOUND", "not here").ToProblemHttpResult();
 
         var (statusCode, body) = await ExecuteAsync(result);
 
         statusCode.Should().Be(StatusCodes.Status404NotFound);
+        body.Should().Contain("\"status\":404");
+        body.Should().Contain("\"detail\":\"not here\"");
         body.Should().Contain("\"code\":\"WEATHERFORECAST_NOT_FOUND\"");
-        body.Should().Contain("\"message\":\"not here\"");
-        body.Should().Contain("\"details\":null");
     }
 
     [Fact]
     public async Task ToHttpResult_OnSuccess_Returns200WithValue()
     {
-        var result = Result<int>.Success(42).ToHttpResult();
+        var result = Result<int>.Success(42).ToHttpResult(ResultStatus.Map);
 
         var (statusCode, body) = await ExecuteAsync(result);
 
@@ -87,9 +86,9 @@ public class ResultHttpExtensionsTests
     }
 
     [Fact]
-    public async Task ToNoContentResult_OnSuccess_Returns204()
+    public async Task ToNoContentHttpResult_OnSuccess_Returns204()
     {
-        var result = Result.Success().ToNoContentResult();
+        var result = Result.Success().ToNoContentHttpResult();
 
         var (statusCode, body) = await ExecuteAsync(result);
 

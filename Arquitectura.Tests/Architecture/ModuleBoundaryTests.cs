@@ -22,7 +22,7 @@ public class ModuleBoundaryTests
     private static readonly Assembly WeatherApi = typeof(global::Modules.Weather.Api.WeatherEndpoints).Assembly;
     private static readonly Assembly DataTableApi = typeof(global::Modules.DataTable.Api.DataTableEndpoints).Assembly;
     private static readonly Assembly Abstractions = typeof(IRequest<>).Assembly;
-    private static readonly Assembly AspNetCoreBlocks = typeof(BuildingBlocks.AspNetCore.ResultHttpExtensions).Assembly;
+    private static readonly Assembly AspNetCoreBlocks = typeof(BuildingBlocks.AspNetCore.ResultStatus).Assembly;
     private static readonly Assembly BuildingBlocksInfrastructure =
         typeof(BuildingBlocks.Infrastructure.Mediator.Mediator).Assembly;
 

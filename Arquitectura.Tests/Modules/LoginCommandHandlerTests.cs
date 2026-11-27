@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Modules.Auth.Contracts;
 using Modules.Auth.Domain;
@@ -8,6 +9,7 @@ using Modules.Auth.Features.Auth.Handlers;
 using Modules.Auth.Persistence;
 using Modules.Auth.Services;
 using ResulTus;
+using ResulTus.Testing;
 using Xunit;
 
 namespace Arquitectura.Tests.Modules;
@@ -43,16 +45,16 @@ public class LoginCommandHandlerTests
             .Returns("access-token");
         tokens.Setup(x => x.GenerateRefreshToken()).Returns("refresh-token");
 
-        var handler = new LoginCommandHandler(repository.Object, tokens.Object);
+        var handler = new LoginCommandHandler(repository.Object, tokens.Object, NullLogger<LoginCommandHandler>.Instance);
 
         var result = await handler.Handle(
             new LoginCommand(new LoginRequest(user.Email, "Password1!")),
             CancellationToken.None);
 
-        result.TryGetValue(out var response).Should().BeTrue();
-        response!.AccessToken.Should().Be("access-token");
-        response!.RefreshToken.Should().Be("refresh-token");
-        response!.User.Email.Should().Be(user.Email);
+        var response = result.ShouldSucceed();
+        response.AccessToken.Should().Be("access-token");
+        response.RefreshToken.Should().Be("refresh-token");
+        response.User.Email.Should().Be(user.Email);
         user.PasswordHash.Should().StartWith("PBKDF2$", "the legacy hash is upgraded on successful login");
         repository.Verify(x => x.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -66,14 +68,13 @@ public class LoginCommandHandlerTests
         repository.Setup(x => x.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<User>.Success(user));
 
-        var handler = new LoginCommandHandler(repository.Object, Mock.Of<IJwtTokenService>());
+        var handler = new LoginCommandHandler(repository.Object, Mock.Of<IJwtTokenService>(), NullLogger<LoginCommandHandler>.Instance);
 
         var result = await handler.Handle(
             new LoginCommand(new LoginRequest(user.Email, "wrong-password")),
             CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.TryGetValue(out _, out var error).Should().BeFalse();
+        var error = result.ShouldFail();
         error.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
         error.Type.Should().Be(ErrorType.Unauthorized);
     }
@@ -85,14 +86,13 @@ public class LoginCommandHandlerTests
         repository.Setup(x => x.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<User>.Failure(Error.NotFound("USER_NOT_FOUND", "missing")));
 
-        var handler = new LoginCommandHandler(repository.Object, Mock.Of<IJwtTokenService>());
+        var handler = new LoginCommandHandler(repository.Object, Mock.Of<IJwtTokenService>(), NullLogger<LoginCommandHandler>.Instance);
 
         var result = await handler.Handle(
             new LoginCommand(new LoginRequest("ghost@example.com", "Password1!")),
             CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.TryGetValue(out _, out var error).Should().BeFalse();
+        var error = result.ShouldFail();
         error.Type.Should().Be(ErrorType.Unauthorized);
     }
 }
