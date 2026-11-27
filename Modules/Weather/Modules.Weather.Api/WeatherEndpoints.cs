@@ -1,6 +1,7 @@
 using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.Abstractions.Pagination;
 using BuildingBlocks.AspNetCore;
+using ResulTus.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -42,9 +43,9 @@ public static class WeatherEndpoints
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapGet("/{id:int}", async (int id, ISender sender, CancellationToken cancellationToken) =>
-                (await sender.Send(new GetWeatherForecastByIdQuery(id), cancellationToken)).ToHttpResult())
+                (await sender.Send(new GetWeatherForecastByIdQuery(id), cancellationToken)).ToHttpResult(ResultStatus.Map))
             .Produces<WeatherForecastDto>(StatusCodes.Status200OK)
-            .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/", async (
@@ -56,10 +57,10 @@ public static class WeatherEndpoints
 
                 return result.Match<IResult>(
                     forecast => Results.Created($"/api/weatherforecast/{forecast.Id}", forecast),
-                    ResultHttpExtensions.ToErrorResult);
+                    error => error.ToProblemHttpResult());
             })
             .Produces<WeatherForecastDto>(StatusCodes.Status201Created)
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapPut("/{id:int}", async (
@@ -67,16 +68,16 @@ public static class WeatherEndpoints
                 CreateWeatherForecastRequest request,
                 ISender sender,
                 CancellationToken cancellationToken) =>
-                (await sender.Send(new UpdateWeatherForecastCommand(id, request), cancellationToken)).ToHttpResult())
+                (await sender.Send(new UpdateWeatherForecastCommand(id, request), cancellationToken)).ToHttpResult(ResultStatus.Map))
             .Produces<WeatherForecastDto>(StatusCodes.Status200OK)
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapDelete("/{id:int}", async (int id, ISender sender, CancellationToken cancellationToken) =>
-                (await sender.Send(new DeleteWeatherForecastCommand(id), cancellationToken)).ToNoContentResult())
+                (await sender.Send(new DeleteWeatherForecastCommand(id), cancellationToken)).ToNoContentHttpResult())
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         return app;

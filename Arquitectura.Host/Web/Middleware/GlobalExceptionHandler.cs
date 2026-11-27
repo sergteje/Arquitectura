@@ -1,12 +1,17 @@
+using BuildingBlocks.Infrastructure.Behaviors;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ResulTus;
+using ResulTus.AspNetCore;
+using ResulTus.Validation;
 
 namespace Arquitectura.Host.Web.Middleware;
 
 /// <summary>
 /// Converts unhandled exceptions into RFC 7807 problem details with the legacy status/title mapping.
+/// Structured validation failures are rendered through <c>ResulTus.AspNetCore</c>.
 /// </summary>
 /// <param name="logger">The logger.</param>
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
@@ -17,6 +22,18 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is RequestValidationException requestValidation)
+        {
+            logger.LogWarning("Request validation failed: {Message}", exception.Message);
+
+            var validationResult = Result<object, ValidationErrors>
+                .Failure(requestValidation.Errors)
+                .ToHttpResult();
+
+            await validationResult.ExecuteAsync(httpContext);
+            return true;
+        }
+
         logger.LogError(exception, "An unhandled exception occurred: {Message}", exception.Message);
 
         var problemDetails = CreateProblemDetails(exception, httpContext.TraceIdentifier);

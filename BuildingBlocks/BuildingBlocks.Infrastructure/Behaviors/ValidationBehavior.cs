@@ -1,11 +1,15 @@
 using BuildingBlocks.Abstractions.Mediator;
 using FluentValidation;
+using ResulTus.Validation;
+using ResulTus.Validation.FluentValidation;
 
 namespace BuildingBlocks.Infrastructure.Behaviors;
 
 /// <summary>
-/// Runs every registered <see cref="IValidator{T}"/> for the request before the handler and throws a
-/// <see cref="ValidationException"/> when any rule fails. The host maps that exception to HTTP 400.
+/// Runs every registered <see cref="IValidator{T}"/> for the request through the
+/// <c>ResulTus.Validation.FluentValidation</c> adapter and throws a
+/// <see cref="RequestValidationException"/> carrying structured <see cref="ValidationErrors"/> when
+/// any rule fails. The host renders those errors as RFC 9457 problem details.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
 /// <typeparam name="TResponse">The response type.</typeparam>
@@ -20,22 +24,26 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        if (validators.Any())
+        if (!validators.Any())
         {
-            var context = new ValidationContext<TRequest>(request);
+            return await next(cancellationToken);
+        }
 
-            var results = await Task.WhenAll(
-                validators.Select(validator => validator.ValidateAsync(context, cancellationToken)));
+        var issues = new List<ValidationIssue>();
 
-            var failures = results
-                .SelectMany(result => result.Errors)
-                .Where(failure => failure is not null)
-                .ToList();
+        foreach (var validator in validators)
+        {
+            var (isSuccess, _, errors) = await request.ValidateAsync(validator, cancellationToken);
 
-            if (failures.Count > 0)
+            if (!isSuccess && errors is not null)
             {
-                throw new ValidationException(failures);
+                issues.AddRange(errors.Issues);
             }
+        }
+
+        if (issues.Count > 0)
+        {
+            throw new RequestValidationException(new ValidationErrors(issues));
         }
 
         return await next(cancellationToken);

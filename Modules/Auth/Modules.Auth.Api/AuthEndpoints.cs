@@ -1,6 +1,7 @@
 using BuildingBlocks.Abstractions.Identity;
 using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.AspNetCore;
+using ResulTus.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
@@ -22,10 +23,10 @@ public static class AuthEndpoints
             .RequireRateLimiting("fixed");
 
         group.MapPost("/login", async (LoginRequest request, ISender sender, CancellationToken cancellationToken) =>
-                (await sender.Send(new LoginCommand(request), cancellationToken)).ToHttpResult())
+                (await sender.Send(new LoginCommand(request), cancellationToken)).ToHttpResult(ResultStatus.Map))
             .AllowAnonymous()
             .Produces<AuthResponse>(StatusCodes.Status200OK)
-            .Produces<ErrorResponse>(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/register", async (
@@ -37,22 +38,22 @@ public static class AuthEndpoints
 
                 return result.Match<IResult>(
                     value => Results.Json(value, statusCode: StatusCodes.Status201Created),
-                    ResultHttpExtensions.ToErrorResult);
+                    error => error.ToProblemHttpResult());
             })
             .AllowAnonymous()
             .Produces<AuthResponse>(StatusCodes.Status201Created)
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponse>(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/refresh", async (
                 RefreshTokenRequest request,
                 ISender sender,
                 CancellationToken cancellationToken) =>
-                (await sender.Send(new RefreshTokenCommand(request), cancellationToken)).ToHttpResult())
+                (await sender.Send(new RefreshTokenCommand(request), cancellationToken)).ToHttpResult(ResultStatus.Map))
             .RequireAuthorization()
             .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
-            .Produces<ErrorResponse>(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         group.MapPost("/logout", async (
@@ -62,7 +63,8 @@ public static class AuthEndpoints
             {
                 if (currentUser.UserId is { } userId)
                 {
-                    await sender.Send(new LogoutCommand(userId), cancellationToken);
+                    var result = await sender.Send(new LogoutCommand(userId), cancellationToken);
+                    return result.ToNoContentHttpResult();
                 }
 
                 return Results.NoContent();

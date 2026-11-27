@@ -2,6 +2,7 @@ using System.Text.Json;
 using BuildingBlocks.Abstractions.Identity;
 using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.AspNetCore;
+using ResulTus.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -35,7 +36,7 @@ public static class DataTableEndpoints
                 return result.ToHttpResult();
             })
             .Produces<DataTableConfigResponseDto>(StatusCodes.Status200OK)
-            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/{tableKey}/config", async (
                 string tableKey,
@@ -49,10 +50,10 @@ public static class DataTableEndpoints
                     new SaveDataTableConfigCommand(tableKey, userId, config),
                     cancellationToken);
 
-                return result.ToNoContentResult();
+                return result.ToNoContentHttpResult();
             })
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapDelete("/{tableKey}/config", async (
                 string tableKey,
@@ -65,10 +66,10 @@ public static class DataTableEndpoints
                     new ResetDataTableConfigCommand(tableKey, userId),
                     cancellationToken);
 
-                return result.ToNoContentResult();
+                return result.ToNoContentHttpResult();
             })
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{tableKey}/data", async (
                 string tableKey,
@@ -95,7 +96,7 @@ public static class DataTableEndpoints
                 return result.ToHttpResult();
             })
             .Produces<DataResponseDto<Dictionary<string, object>>>(StatusCodes.Status200OK)
-            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/{tableKey}/export", async (
                 string tableKey,
@@ -119,10 +120,10 @@ public static class DataTableEndpoints
 
                 return result.Match<IResult>(
                     value => Results.Accepted(value: value),
-                    ResultHttpExtensions.ToErrorResult);
+                    error => error.ToProblemHttpResult());
             })
             .Produces<DataTableExportResponseDto>(StatusCodes.Status202Accepted)
-            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
         return app;
     }

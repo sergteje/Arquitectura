@@ -5,6 +5,9 @@ using Modules.Auth.Domain;
 using Modules.Auth.Persistence;
 using ResulTus;
 
+using BuildingBlocks.Abstractions.Errors;
+using Modules.Auth.Errors;
+
 namespace Modules.Auth.Infrastructure.Persistence;
 
 /// <summary>
@@ -29,11 +32,11 @@ public sealed class UserRepository(IDbConnectionFactory connectionFactory) : IUs
 
             return user is not null
                 ? Result<User>.Success(user)
-                : Result<User>.Failure(Error.NotFound("USER_NOT_FOUND", $"User with email '{email}' was not found"));
+                : Result<User>.Failure(AuthErrors.UserNotFoundByEmail(email));
         }
         catch (Exception exception)
         {
-            return Result<User>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<User>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 
@@ -53,11 +56,11 @@ public sealed class UserRepository(IDbConnectionFactory connectionFactory) : IUs
 
             return user is not null
                 ? Result<User>.Success(user)
-                : Result<User>.Failure(Error.NotFound("USER_NOT_FOUND", $"User with id '{id}' was not found"));
+                : Result<User>.Failure(AuthErrors.UserNotFoundById(id));
         }
         catch (Exception exception)
         {
-            return Result<User>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<User>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 
@@ -90,7 +93,7 @@ public sealed class UserRepository(IDbConnectionFactory connectionFactory) : IUs
         }
         catch (Exception exception)
         {
-            return Result<User>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<User>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 
@@ -127,7 +130,7 @@ public sealed class UserRepository(IDbConnectionFactory connectionFactory) : IUs
         }
         catch (Exception exception)
         {
-            return Result<User>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<User>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 
@@ -149,7 +152,7 @@ public sealed class UserRepository(IDbConnectionFactory connectionFactory) : IUs
         }
         catch (Exception exception)
         {
-            return Result<bool>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<bool>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 }

@@ -1,16 +1,25 @@
 using BuildingBlocks.Abstractions.Mediator;
+using Microsoft.Extensions.Logging;
 using Modules.Auth.Contracts;
 using Modules.Auth.Domain;
 using Modules.Auth.Persistence;
 using Modules.Auth.Services;
 using ResulTus;
+using ResulTus.Extensions;
+using ResulTus.Logging;
+
+using Modules.Auth.Errors;
 
 namespace Modules.Auth.Features.Auth.Handlers;
 
 /// <summary>Handles <see cref="LoginCommand"/>.</summary>
 /// <param name="userRepository">The user repository.</param>
 /// <param name="jwtTokenService">The token service.</param>
-public sealed class LoginCommandHandler(IUserRepository userRepository, IJwtTokenService jwtTokenService)
+/// <param name="logger">The logger used to audit the result.</param>
+public sealed class LoginCommandHandler(
+    IUserRepository userRepository,
+    IJwtTokenService jwtTokenService,
+    ILogger<LoginCommandHandler> logger)
     : IRequestHandler<LoginCommand, Result<AuthResponse>>
 {
     private static readonly TimeSpan AccessTokenExpiration = TimeSpan.FromMinutes(30);
@@ -19,23 +28,35 @@ public sealed class LoginCommandHandler(IUserRepository userRepository, IJwtToke
     /// <inheritdoc />
     public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
+        var result = await HandleCore(request, cancellationToken);
+        return result.LogAll(
+            logger,
+            error => error.Type is ErrorType.Unauthorized or ErrorType.Validation
+                ? LogLevel.Warning
+                : LogLevel.Error,
+            "Login attempt completed");
+    }
+
+    private async Task<Result<AuthResponse>> HandleCore(LoginCommand request, CancellationToken cancellationToken)
+    {
         var userResult = await userRepository.GetByEmailAsync(request.Request.Email, cancellationToken);
         if (!userResult.TryGetValue(out var user) || user is null)
         {
             return Result<AuthResponse>.Failure(
-                Error.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password"));
+                AuthErrors.InvalidCredentials());
         }
 
-        if (!PasswordHasher.Verify(request.Request.Password, user.PasswordHash))
-        {
-            return Result<AuthResponse>.Failure(
-                Error.Unauthorized("AUTH_INVALID_CREDENTIALS", "Invalid email or password"));
-        }
+        var validated = userResult
+            .Ensure(
+                candidate => PasswordHasher.Verify(request.Request.Password, candidate.PasswordHash),
+                AuthErrors.InvalidCredentials())
+            .Ensure(
+                candidate => candidate.IsActive,
+                AuthErrors.AccountDisabled());
 
-        if (!user.IsActive)
+        if (!validated.TryGetValue(out user, out var validationError) || user is null)
         {
-            return Result<AuthResponse>.Failure(
-                Error.Forbidden("AUTH_ACCOUNT_DISABLED", "Account is disabled"));
+            return Result<AuthResponse>.Failure(validationError);
         }
 
         if (PasswordHasher.NeedsRehash(user.PasswordHash))
@@ -53,7 +74,7 @@ public sealed class LoginCommandHandler(IUserRepository userRepository, IJwtToke
         if (updateResult.IsFailure)
         {
             return Result<AuthResponse>.Failure(
-                Error.Failure("AUTH_UPDATE_FAILED", "Failed to update user"));
+                AuthErrors.UpdateFailed());
         }
 
         var response = new AuthResponse(
@@ -85,13 +106,13 @@ public sealed class RegisterCommandHandler(IUserRepository userRepository, IJwtT
         if (!existsResult.TryGetValue(out var exists))
         {
             return Result<AuthResponse>.Failure(
-                Error.Failure("AUTH_LOOKUP_FAILED", "Error checking user existence"));
+                AuthErrors.LookupFailed());
         }
 
         if (exists)
         {
             return Result<AuthResponse>.Failure(
-                Error.Conflict("AUTH_EMAIL_EXISTS", "Email already registered"));
+                AuthErrors.EmailExists());
         }
 
         var user = new User
@@ -107,7 +128,7 @@ public sealed class RegisterCommandHandler(IUserRepository userRepository, IJwtT
         if (!createResult.TryGetValue(out user) || user is null)
         {
             return Result<AuthResponse>.Failure(
-                Error.Failure("AUTH_CREATE_FAILED", "Failed to create user"));
+                AuthErrors.CreateFailed());
         }
 
         var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email);
@@ -143,20 +164,20 @@ public sealed class RefreshTokenCommandHandler(IUserRepository userRepository, I
         if (userId is null)
         {
             return Result<RefreshTokenResponse>.Failure(
-                Error.Unauthorized("AUTH_INVALID_REFRESH_TOKEN", "Invalid refresh token"));
+                AuthErrors.InvalidRefreshToken());
         }
 
         var userResult = await userRepository.GetByIdAsync(userId.Value, cancellationToken);
         if (!userResult.TryGetValue(out var user) || user is null)
         {
             return Result<RefreshTokenResponse>.Failure(
-                Error.Unauthorized("AUTH_USER_NOT_FOUND", "User not found"));
+                AuthErrors.UserNotFound());
         }
 
         if (!user.IsRefreshTokenValid() || user.RefreshToken != request.Request.RefreshToken)
         {
             return Result<RefreshTokenResponse>.Failure(
-                Error.Unauthorized("AUTH_REFRESH_TOKEN_EXPIRED", "Refresh token expired"));
+                AuthErrors.RefreshTokenExpired());
         }
 
         var newAccessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email);
@@ -168,7 +189,7 @@ public sealed class RefreshTokenCommandHandler(IUserRepository userRepository, I
         if (updateResult.IsFailure)
         {
             return Result<RefreshTokenResponse>.Failure(
-                Error.Failure("AUTH_UPDATE_FAILED", "Failed to update user"));
+                AuthErrors.UpdateFailed());
         }
 
         var response = new RefreshTokenResponse(
@@ -196,7 +217,7 @@ public sealed class LogoutCommandHandler(IUserRepository userRepository)
             var updateResult = await userRepository.UpdateAsync(user, cancellationToken);
             if (updateResult.IsFailure)
             {
-                return Result.Failure(Error.Failure("AUTH_LOGOUT_FAILED", "Failed to logout"));
+                return Result.Failure(AuthErrors.LogoutFailed());
             }
         }
 

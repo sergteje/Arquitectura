@@ -6,6 +6,8 @@ using Modules.DataTable.Contracts;
 using Modules.DataTable.Persistence;
 using ResulTus;
 
+using Modules.DataTable.Errors;
+
 namespace Modules.DataTable.Infrastructure.Persistence;
 
 /// <summary>
@@ -37,7 +39,7 @@ public sealed class DataTableRepository(IDbConnectionFactory connectionFactory) 
             if (columns.Count == 0)
             {
                 return Result<DataTableConfigResponseDto>.Failure(
-                    Error.NotFound("TABLE_NOT_FOUND", $"Table '{tableKey}' not found"));
+                    DataTableErrors.TableNotFound(tableKey));
             }
 
             var allColumns = columns.Select(column => new ColumnConfigDto(
@@ -121,7 +123,7 @@ public sealed class DataTableRepository(IDbConnectionFactory connectionFactory) 
         }
         catch (Exception exception)
         {
-            return Result<DataTableConfigResponseDto>.Failure(Error.Failure("CONFIG_ERROR", exception.Message));
+            return Result<DataTableConfigResponseDto>.Failure(DataTableErrors.ConfigError(exception.Message));
         }
     }
 
@@ -157,7 +159,7 @@ public sealed class DataTableRepository(IDbConnectionFactory connectionFactory) 
         }
         catch (Exception exception)
         {
-            return Result.Failure(Error.Failure("SAVE_CONFIG_ERROR", exception.Message));
+            return Result.Failure(DataTableErrors.SaveConfigError(exception.Message));
         }
     }
 
@@ -181,7 +183,7 @@ public sealed class DataTableRepository(IDbConnectionFactory connectionFactory) 
         }
         catch (Exception exception)
         {
-            return Result.Failure(Error.Failure("RESET_CONFIG_ERROR", exception.Message));
+            return Result.Failure(DataTableErrors.ResetConfigError(exception.Message));
         }
     }
 
@@ -231,7 +233,7 @@ public sealed class DataTableRepository(IDbConnectionFactory connectionFactory) 
         catch (Exception exception)
         {
             return Result<DataResponseDto<Dictionary<string, object>>>.Failure(
-                Error.Failure("DATA_ERROR", exception.Message));
+                DataTableErrors.DataError(exception.Message));
         }
     }
 
@@ -275,7 +277,7 @@ public sealed class DataTableRepository(IDbConnectionFactory connectionFactory) 
         }
         catch (Exception exception)
         {
-            return Result<DataTableExportResponseDto>.Failure(Error.Failure("EXPORT_ERROR", exception.Message));
+            return Result<DataTableExportResponseDto>.Failure(DataTableErrors.ExportError(exception.Message));
         }
     }
 

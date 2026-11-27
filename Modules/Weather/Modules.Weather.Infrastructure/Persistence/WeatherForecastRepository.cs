@@ -6,6 +6,9 @@ using Modules.Weather.Contracts;
 using Modules.Weather.Persistence;
 using ResulTus;
 
+using BuildingBlocks.Abstractions.Errors;
+using Modules.Weather.Errors;
+
 namespace Modules.Weather.Infrastructure.Persistence;
 
 /// <summary>
@@ -55,7 +58,7 @@ public sealed class WeatherForecastRepository(IDbConnectionFactory connectionFac
         catch (Exception exception)
         {
             return Result<PaginatedResponse<WeatherForecastDto>>.Failure(
-                Error.Failure("DATABASE_ERROR", exception.Message));
+                CommonErrors.Database(exception.Message));
         }
     }
 
@@ -76,7 +79,7 @@ public sealed class WeatherForecastRepository(IDbConnectionFactory connectionFac
             if (raw is null)
             {
                 return Result<WeatherForecastDto>.Failure(
-                    Error.NotFound("WEATHERFORECAST_NOT_FOUND", $"Weather forecast with id '{id}' was not found"));
+                    WeatherErrors.ForecastNotFound(id));
             }
 
             var item = new WeatherForecastDto
@@ -91,7 +94,7 @@ public sealed class WeatherForecastRepository(IDbConnectionFactory connectionFac
         }
         catch (Exception exception)
         {
-            return Result<WeatherForecastDto>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<WeatherForecastDto>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 
@@ -130,7 +133,7 @@ public sealed class WeatherForecastRepository(IDbConnectionFactory connectionFac
         }
         catch (Exception exception)
         {
-            return Result<WeatherForecastDto>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<WeatherForecastDto>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 
@@ -171,7 +174,7 @@ public sealed class WeatherForecastRepository(IDbConnectionFactory connectionFac
         }
         catch (Exception exception)
         {
-            return Result<WeatherForecastDto>.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result<WeatherForecastDto>.Failure(CommonErrors.Database(exception.Message));
         }
     }
 
@@ -193,7 +196,7 @@ public sealed class WeatherForecastRepository(IDbConnectionFactory connectionFac
         }
         catch (Exception exception)
         {
-            return Result.Failure(Error.Failure("DATABASE_ERROR", exception.Message));
+            return Result.Failure(CommonErrors.Database(exception.Message));
         }
     }
 }

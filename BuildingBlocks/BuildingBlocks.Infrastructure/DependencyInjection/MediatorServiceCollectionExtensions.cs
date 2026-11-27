@@ -14,7 +14,8 @@ public static class MediatorServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the mediator, the handler wrappers and the shared pipeline behaviors.
-    /// Behaviors run in this order: logging, validation, resilience, cache invalidation.
+    /// Behaviors run in this order: validation, logging, resilience, cache invalidation. Validation
+    /// runs first so a rejected request does not reach the logging behavior.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The same service collection for chaining.</returns>
@@ -24,9 +25,9 @@ public static class MediatorServiceCollectionExtensions
         services.TryAddScoped<ISender, Mediator.Mediator>();
 
         services.TryAddEnumerable(ServiceDescriptor.Scoped(
-            typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
-        services.TryAddEnumerable(ServiceDescriptor.Scoped(
             typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(
+            typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(
             typeof(IPipelineBehavior<,>), typeof(ResilienceBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(
