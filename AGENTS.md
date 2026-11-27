@@ -92,6 +92,9 @@ docker compose up -d   # Host + SQL Server + Redis + observability
 9. **Resilience**: only idempotent requests implement `IResilientRequest`.
 10. **Configuration**: Options-based, no hardcoded secrets. `Jwt:Key` is mandatory.
 11. **API docs**: OpenAPI at `/openapi/v1.json`, Scalar UI at `/scalar`. Do not reintroduce Swashbuckle.
+12. **ROP in application code**: handlers compose with `Bind`/`Ensure`/`Map`/`MapError`; repositories
+    use `Result.TryAsync`, never `try/catch`. The only exception is `ValidationBehavior` (structured
+    validation errors); `CurrentUser` exposes `Result<int> UserIdResult`.
 
 ## Persistence
 

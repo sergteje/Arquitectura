@@ -1,3 +1,5 @@
+using ResulTus;
+
 namespace BuildingBlocks.Abstractions.Identity;
 
 /// <summary>
@@ -21,9 +23,10 @@ public interface ICurrentUser
     bool IsAuthenticated { get; }
 
     /// <summary>
-    /// Gets the authenticated user identifier or throws when the caller is anonymous.
+    /// Gets the authenticated user identifier as a result, or an unauthorized failure when the
+    /// request is anonymous. This is the railway-oriented view used by endpoint compositions.
     /// </summary>
-    /// <returns>The authenticated user identifier.</returns>
-    /// <exception cref="UnauthorizedAccessException">The current request is anonymous.</exception>
-    int RequireUserId();
+    Result<int> UserIdResult => UserId is { } id
+        ? Result<int>.Success(id)
+        : Result<int>.Failure(Error.Unauthorized("AUTH_REQUIRED", "Authentication is required."));
 }

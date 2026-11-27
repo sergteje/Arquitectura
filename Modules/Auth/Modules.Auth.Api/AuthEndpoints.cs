@@ -60,15 +60,10 @@ public static class AuthEndpoints
                 ICurrentUser currentUser,
                 ISender sender,
                 CancellationToken cancellationToken) =>
-            {
-                if (currentUser.UserId is { } userId)
-                {
-                    var result = await sender.Send(new LogoutCommand(userId), cancellationToken);
-                    return result.ToNoContentHttpResult();
-                }
-
-                return Results.NoContent();
-            })
+            await currentUser.UserIdResult.Match(
+                async userId => (await sender.Send(new LogoutCommand(userId), cancellationToken))
+                    .ToNoContentHttpResult(),
+                error => Task.FromResult(error.ToProblemHttpResult())))
             .RequireAuthorization()
             .Produces(StatusCodes.Status204NoContent);
 

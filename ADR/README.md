@@ -15,6 +15,7 @@ Consequences**.
 | ADR-008 | Missing `sp_DeleteUserTableConfig` documented, later added | Resolved |
 | ADR-009 | Minimal API endpoints owned by each module | Accepted |
 | ADR-010 | Dogfood the full ResulTus suite | Accepted |
+| ADR-011 | Railway-oriented handlers, exceptions only at the boundary | Accepted |
 
 ---
 
@@ -210,5 +211,34 @@ package family. The goal is to exercise the packages in production-shaped code, 
   host renders it through `ResulTus.AspNetCore`'s validation conversion.
 - Error codes and messages live in generated factories (`CommonErrors`, `AuthErrors`, `WeatherErrors`,
   `DataTableErrors`) instead of inline `Error.X("CODE", ...)` calls.
-- `ResulTus.Logging` cannot be used inside the generic `LoggingBehavior` because `Result<T>` has no
-  non-generic abstraction; it is used where the concrete result type is known (login audit).
+- `ResulTus.Logging` logs every result inside `LoggingBehavior` through the non-generic
+  `IResultOutcome` view added in ResulTus 1.4.0.
+
+---
+
+## ADR-011 — Railway-oriented handlers, exceptions only at the boundary
+
+**Context.** After the ResulTus migration, the HTTP edges were railway-oriented but the Auth handlers
+still used `TryGetValue`/`IsFailure`/early returns, the repositories caught every exception to build a
+`Result`, and `IJwtTokenService.ValidateToken` returned a nullable tuple. The owner asked for ROP
+through the application layer.
+
+**Decision.** Handlers compose `Result` with `Bind`/`Ensure`/`Map`/`MapError`; they do not inspect
+`IsSuccess` or `TryGetValue` in the middle of a flow. Repositories use `Result.TryAsync` and map the
+captured exception to the module error (`CommonErrors.Database`, `DataTableErrors.*`), so no
+`try/catch` remains in persistence. `IJwtTokenService.ValidateToken` returns
+`Result<TokenIdentity>`.
+
+One boundary keeps an exception on purpose:
+
+- `ValidationBehavior` throws `RequestValidationException` to carry structured `ValidationErrors`
+  through a mediator whose contract is `Result<TResponse>`.
+
+`CurrentUser` exposes `Result<int> UserIdResult`; endpoints compose it with `Match`.
+
+**Consequences.** The application layer reads as a pipeline with a single failure path. The error code
+of a failed step survives unless the handler maps it deliberately. Persistence no longer duplicates
+exception handling. The validation boundary is documented and covered by tests; removing it would
+require changing the mediator contract.
+
+**Supersedes.** None. Complements ADR-010.

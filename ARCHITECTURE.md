@@ -95,6 +95,11 @@ The result pipeline dogfoods the whole ResulTus suite: `Extensions` (`Ensure`), 
 `SourceGenerators` (`[ResultErrors]` factories), `Logging` (pipeline behavior through `IResultOutcome`), `Testing` (assertions) and
 `Analyzers` (build-time checks).
 
+Handlers stay railway-oriented: they compose `Result` with `Bind`, `Ensure`, `Map` and `MapError`,
+and repositories capture infrastructure exceptions with `Result.TryAsync` instead of `try/catch`.
+The only exception left is `ValidationBehavior`, which carries structured `ValidationErrors`;
+`CurrentUser` exposes `Result<int> UserIdResult` for endpoint composition.
+
 ## Security
 
 - JWT bearer authentication; the signing key is mandatory (`Jwt:Key`), with no hardcoded fallback.
