@@ -25,7 +25,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
         var requestName = typeof(TRequest).Name;
         var stopwatch = Stopwatch.StartNew();
 
-        logger.LogInformation("Handling {RequestName}", requestName);
+        logger.LogDebug("Handling {RequestName}", requestName);
 
         try
         {
@@ -50,6 +50,15 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
                     or ErrorType.Validation
                     ? LogLevel.Information
                     : LogLevel.Error);
+
+            if (requestError?.ValidationErrors is { } validationErrors)
+            {
+                logger.LogInformation(
+                    "Validation rejected {RequestName} with {ValidationErrorCount} field errors: {ValidationFields}",
+                    requestName,
+                    validationErrors.Issues.Count,
+                    string.Join(", ", validationErrors.Issues.Select(issue => issue.Field).Distinct()));
+            }
 
             return response;
         }

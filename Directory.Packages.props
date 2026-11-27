@@ -14,6 +14,7 @@
     <PackageVersion Include="ResulTus" Version="1.4.0" />
     <PackageVersion Include="ResulTus.Analyzers" Version="1.4.0" />
     <PackageVersion Include="ResulTus.AspNetCore" Version="1.4.0" />
+    <PackageVersion Include="ResulTus.Diagnostics" Version="1.4.0" />
     <PackageVersion Include="ResulTus.Extensions" Version="1.4.0" />
     <PackageVersion Include="ResulTus.Logging" Version="1.4.0" />
     <PackageVersion Include="ResulTus.SourceGenerators" Version="1.4.0" />
@@ -64,15 +65,17 @@
 
   <ItemGroup Label="Observability">
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.15.2-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.21.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.21.0-beta.1" />
     <PackageVersion Include="Serilog" Version="4.4.0" />
     <PackageVersion Include="Serilog.Extensions.Hosting" Version="11.0.0" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="11.0.0" />
-    <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.3.0" />
+    <PackageVersion Include="Serilog.Sinks.Seq" Version="9.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

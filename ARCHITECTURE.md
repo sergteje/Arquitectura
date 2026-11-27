@@ -68,7 +68,7 @@ HTTP request
   → middleware pipeline (exception handling, correlation, audit, auth, rate limit)
   → minimal API endpoint (Modules.X.Api)
   → ISender.Send(command/query)
-  → mediator pipeline: Logging → Validation → Resilience → CacheInvalidation
+  → mediator pipeline: Diagnostics → Validation → Logging → Resilience → CacheInvalidation
   → module handler (Modules.X.Features)
   → repository port (Modules.X.Persistence)
   → Dapper repository (Modules.X.Infrastructure.Persistence) → SQL Server stored procedure
@@ -94,7 +94,8 @@ mediator contract once. Failures carry a typed `Error` with a stable `Code`, a `
 
 The result pipeline dogfoods the whole ResulTus suite: `Extensions` (`Ensure`), `AspNetCore`
 (ProblemDetails), `Validation` + `Validation.FluentValidation` (structured field errors),
-`SourceGenerators` (`[ResultErrors]` factories), `Logging` (pipeline behavior through `IResultOutcome`), `Testing` (assertions) and
+`SourceGenerators` (`[ResultErrors]` factories), `Logging` (pipeline behavior through `IResultOutcome`), `Diagnostics` (spans and result metrics),
+`Testing` (assertions) and
 `Analyzers` (build-time checks).
 
 Handlers stay railway-oriented: they compose `Result` with `Bind`, `Ensure`, `Map` and `MapError`,
@@ -102,6 +103,23 @@ and repositories capture infrastructure exceptions with `Result.TryAsync` instea
 No exception remains in the application layer: `ValidationBehavior` returns a failed
 `Result<TResponse, RequestError>` carrying `ValidationErrors`, and `CurrentUser` exposes
 `Result<int> UserIdResult` for endpoint composition.
+
+## Observability
+
+- **Traces.** OpenTelemetry subscribes to the ASP.NET Core, HttpClient, `Microsoft.Data.SqlClient`
+  and `StackExchange.Redis` activity sources plus the `ResulTus` one. `DiagnosticsBehavior` publishes
+  one `mediator {RequestName}` span per request carrying `resul_tus.success`,
+  `resul_tus.error_type` and `resul_tus.error_code`, so a trace reads HTTP → mediator → query.
+- **Metrics.** The `ResulTus` meter publishes `resul_tus.result.outcomes` and
+  `resul_tus.result.duration`, tagged with `outcome` and `error_type` — never with the error code,
+  whose cardinality is unbounded. Prometheus scrapes them at `/metrics` and Grafana renders them.
+- **Logs.** One structured line per request. `CorrelationIdMiddleware` pushes `CorrelationId`,
+  `TraceId` and `SpanId` into the log scope, so a log entry joins its span in Jaeger. Bodies are
+  logged at `Debug` only and pass through `LogBodyRedactor`, which masks password- and token-shaped
+  members and refuses to echo anything that is not JSON.
+- **Errors.** `LoggingBehavior` reports the outcome through `ResulTus.Logging` with a level derived
+  from the error type, and names the failing fields (never the values) when validation rejects a
+  request.
 
 ## Security
 
