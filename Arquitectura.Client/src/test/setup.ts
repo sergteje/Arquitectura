@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import '@testing-library/jest-dom'
 
 // Mock next-themes
@@ -19,5 +20,7 @@ const localStorageMock = {
 vi.stubGlobal('localStorage', localStorageMock)
 
 // Mock window.location
-delete window.location
-window.location = new URL('http://localhost') as any
+Object.defineProperty(window, 'location', {
+  configurable: true,
+  value: new URL('http://localhost'),
+})
