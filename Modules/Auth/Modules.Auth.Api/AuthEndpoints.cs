@@ -1,7 +1,6 @@
 using BuildingBlocks.Abstractions.Identity;
 using BuildingBlocks.Abstractions.Mediator;
 using BuildingBlocks.AspNetCore;
-using ResulTus.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
@@ -23,7 +22,7 @@ public static class AuthEndpoints
             .RequireRateLimiting("fixed");
 
         group.MapPost("/login", async (LoginRequest request, ISender sender, CancellationToken cancellationToken) =>
-                (await sender.Send(new LoginCommand(request), cancellationToken)).ToHttpResult(ResultStatus.Map))
+                (await sender.Send(new LoginCommand(request), cancellationToken)).ToHttpResult())
             .AllowAnonymous()
             .Produces<AuthResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -50,7 +49,7 @@ public static class AuthEndpoints
                 RefreshTokenRequest request,
                 ISender sender,
                 CancellationToken cancellationToken) =>
-                (await sender.Send(new RefreshTokenCommand(request), cancellationToken)).ToHttpResult(ResultStatus.Map))
+                (await sender.Send(new RefreshTokenCommand(request), cancellationToken)).ToHttpResult())
             .RequireAuthorization()
             .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized)

@@ -1,3 +1,5 @@
+using ResulTus;
+
 namespace BuildingBlocks.Abstractions.Mediator;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace BuildingBlocks.Abstractions.Mediator;
 /// the first registered behavior is the outermost one.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
-/// <typeparam name="TResponse">The response type.</typeparam>
+/// <typeparam name="TResponse">The success payload type.</typeparam>
 public interface IPipelineBehavior<in TRequest, TResponse>
     where TRequest : notnull
 {
@@ -15,8 +17,8 @@ public interface IPipelineBehavior<in TRequest, TResponse>
     /// <param name="request">The request instance.</param>
     /// <param name="next">Continuation of the pipeline.</param>
     /// <param name="cancellationToken">Token that cancels the operation.</param>
-    /// <returns>The response produced by the pipeline.</returns>
-    Task<TResponse> Handle(
+    /// <returns>The result produced by the pipeline.</returns>
+    Task<Result<TResponse, RequestError>> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken);

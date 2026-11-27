@@ -1,5 +1,6 @@
 using BuildingBlocks.Abstractions.Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using ResulTus;
 
 namespace BuildingBlocks.Infrastructure.Mediator;
 
@@ -11,7 +12,7 @@ namespace BuildingBlocks.Infrastructure.Mediator;
 public sealed class Mediator(IServiceProvider serviceProvider) : ISender
 {
     /// <inheritdoc />
-    public Task<TResponse> Send<TResponse>(
+    public Task<Result<TResponse, RequestError>> Send<TResponse>(
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {

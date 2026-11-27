@@ -1,22 +1,30 @@
 using BuildingBlocks.Abstractions.Mediator;
 using Microsoft.Extensions.Logging;
 using Polly;
-using Polly.CircuitBreaker;
+using Polly.Retry;
+using ResulTus;
 
 namespace BuildingBlocks.Infrastructure.Behaviors;
 
 /// <summary>
-/// Retries and circuit-breaks requests that explicitly opt in through <see cref="IResilientRequest"/>.
+/// Retries requests that explicitly opt in through <see cref="IResilientRequest"/>.
 /// Non-idempotent commands must not opt in: retrying a write can duplicate its effect.
 /// </summary>
+/// <remarks>
+/// A failed result is the normal outcome of the pipeline, so the policy inspects the result instead of
+/// waiting for an exception: only infrastructure categories (<see cref="ErrorType.Failure"/>,
+/// <see cref="ErrorType.Timeout"/> and <see cref="ErrorType.Unexpected"/>) are retried. A validation,
+/// authentication or not-found failure short-circuits immediately.
+/// </remarks>
 /// <typeparam name="TRequest">The request type.</typeparam>
-/// <typeparam name="TResponse">The response type.</typeparam>
+/// <typeparam name="TResponse">The success payload type.</typeparam>
 public sealed class ResilienceBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
+    private const int MaxRetryAttempts = 2;
+
     private readonly ILogger<ResilienceBehavior<TRequest, TResponse>> _logger;
-    private readonly IAsyncPolicy _retryPolicy;
-    private readonly IAsyncPolicy _circuitBreakerPolicy;
+    private readonly AsyncRetryPolicy<Result<TResponse, RequestError>> _retryPolicy;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ResilienceBehavior{TRequest,TResponse}"/> class.
@@ -26,39 +34,24 @@ public sealed class ResilienceBehavior<TRequest, TResponse> : IPipelineBehavior<
     {
         _logger = logger;
 
-        _retryPolicy = Policy
-            .Handle<Exception>(exception => exception is not OperationCanceledException)
+        _retryPolicy = Policy<Result<TResponse, RequestError>>
+            .HandleResult(IsTransient)
             .WaitAndRetryAsync(
-                retryCount: 2,
+                retryCount: MaxRetryAttempts,
                 sleepDurationProvider: attempt => TimeSpan.FromMilliseconds(200 * Math.Pow(2, attempt)),
-                onRetry: (exception, delay, retryCount, _) =>
+                onRetry: (outcome, delay, retryCount, _) =>
                 {
                     _logger.LogWarning(
-                        "Retry {RetryCount} for {RequestName} in {DelayMilliseconds}ms due to {Message}",
+                        "Retry {RetryCount} for {RequestName} in {DelayMilliseconds}ms due to {ErrorCode}",
                         retryCount,
                         typeof(TRequest).Name,
                         delay.TotalMilliseconds,
-                        exception.Message);
+                        Describe(outcome.Result));
                 });
-
-        _circuitBreakerPolicy = Policy
-            .Handle<Exception>(exception => exception is not OperationCanceledException)
-            .CircuitBreakerAsync(
-                exceptionsAllowedBeforeBreaking: 5,
-                durationOfBreak: TimeSpan.FromSeconds(30),
-                onBreak: (exception, duration) =>
-                {
-                    _logger.LogError(
-                        "Circuit breaker opened for {BreakSeconds}s due to {Message}",
-                        duration.TotalSeconds,
-                        exception.Message);
-                },
-                onReset: () => _logger.LogInformation("Circuit breaker reset"),
-                onHalfOpen: () => _logger.LogInformation("Circuit breaker half-open"));
     }
 
     /// <inheritdoc />
-    public async Task<TResponse> Handle(
+    public async Task<Result<TResponse, RequestError>> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
@@ -68,16 +61,27 @@ public sealed class ResilienceBehavior<TRequest, TResponse> : IPipelineBehavior<
             return await next(cancellationToken);
         }
 
-        var policy = Policy.WrapAsync(_retryPolicy, _circuitBreakerPolicy);
+        var result = await _retryPolicy.ExecuteAsync(_ => next(cancellationToken), new Context());
 
-        try
+        if (IsTransient(result))
         {
-            return await policy.ExecuteAsync(_ => next(cancellationToken), new Context());
+            _logger.LogError(
+                "Retries exhausted for {RequestName} after {MaxRetryAttempts} attempts due to {ErrorCode}",
+                typeof(TRequest).Name,
+                MaxRetryAttempts,
+                Describe(result));
         }
-        catch (BrokenCircuitException exception)
-        {
-            _logger.LogError(exception, "Circuit breaker is open for {RequestName}", typeof(TRequest).Name);
-            throw;
-        }
+
+        return result;
     }
+
+    private static bool IsTransient(Result<TResponse, RequestError> result) =>
+        result.TryGetError(out var requestError)
+        && requestError is not null
+        && requestError.Error.Type is ErrorType.Failure or ErrorType.Timeout or ErrorType.Unexpected;
+
+    private static string Describe(Result<TResponse, RequestError> result) =>
+        result.TryGetError(out var requestError) && requestError is not null
+            ? requestError.Error.Code
+            : "none";
 }

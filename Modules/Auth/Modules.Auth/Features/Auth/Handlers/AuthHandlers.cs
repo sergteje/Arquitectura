@@ -12,44 +12,47 @@ namespace Modules.Auth.Features.Auth.Handlers;
 /// <summary>Handles <see cref="LoginCommand"/>.</summary>
 /// <param name="userRepository">The user repository.</param>
 /// <param name="jwtTokenService">The token service.</param>
-/// <param name="jwtTokenService">The token service.</param>
 public sealed class LoginCommandHandler(
     IUserRepository userRepository,
     IJwtTokenService jwtTokenService)
-    : IRequestHandler<LoginCommand, Result<AuthResponse>>
+    : IRequestHandler<LoginCommand, AuthResponse>
 {
     private static readonly TimeSpan AccessTokenExpiration = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RefreshTokenExpiration = TimeSpan.FromDays(7);
 
     /// <inheritdoc />
-    public Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
-        => HandleCore(request, cancellationToken);
-
-    private async Task<Result<AuthResponse>> HandleCore(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<Result<AuthResponse, RequestError>> Handle(
+        LoginCommand request,
+        CancellationToken cancellationToken)
     {
-        var userResult = await userRepository.GetByEmailAsync(request.Request.Email, cancellationToken);
-        if (!userResult.TryGetValue(out var user) || user is null)
-        {
-            return Result<AuthResponse>.Failure(
-                AuthErrors.InvalidCredentials());
-        }
+        var result = await userRepository.GetByEmailAsync(request.Request.Email, cancellationToken)
+            .MapErrorAsync(
+                (_, _) => ValueTask.FromResult(AuthErrors.InvalidCredentials()),
+                cancellationToken)
+            .EnsureAsync(
+                (user, _) => ValueTask.FromResult(
+                    PasswordHasher.Verify(request.Request.Password, user.PasswordHash)),
+                AuthErrors.InvalidCredentials(),
+                cancellationToken)
+            .EnsureAsync(
+                (user, _) => ValueTask.FromResult(user.IsActive),
+                AuthErrors.AccountDisabled(),
+                cancellationToken)
+            .BindAsync(
+                (user, token) => UpdateAndRespond(user, request.Request.Password, token),
+                cancellationToken);
 
-        var validated = userResult
-            .Ensure(
-                candidate => PasswordHasher.Verify(request.Request.Password, candidate.PasswordHash),
-                AuthErrors.InvalidCredentials())
-            .Ensure(
-                candidate => candidate.IsActive,
-                AuthErrors.AccountDisabled());
+        return result.ToRequestResult();
+    }
 
-        if (!validated.TryGetValue(out user, out var validationError) || user is null)
-        {
-            return Result<AuthResponse>.Failure(validationError);
-        }
-
+    private async ValueTask<Result<AuthResponse>> UpdateAndRespond(
+        User user,
+        string password,
+        CancellationToken cancellationToken)
+    {
         if (PasswordHasher.NeedsRehash(user.PasswordHash))
         {
-            user.PasswordHash = PasswordHasher.Hash(request.Request.Password);
+            user.PasswordHash = PasswordHasher.Hash(password);
         }
 
         var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email);
@@ -58,20 +61,13 @@ public sealed class LoginCommandHandler(
         user.UpdateRefreshToken(refreshToken, RefreshTokenExpiration);
         user.LastLoginAt = DateTime.UtcNow;
 
-        var updateResult = await userRepository.UpdateAsync(user, cancellationToken);
-        if (updateResult.IsFailure)
-        {
-            return Result<AuthResponse>.Failure(
-                AuthErrors.UpdateFailed());
-        }
-
-        var response = new AuthResponse(
-            accessToken,
-            refreshToken,
-            DateTime.UtcNow.Add(AccessTokenExpiration),
-            ToDto(user));
-
-        return Result<AuthResponse>.Success(response);
+        return (await userRepository.UpdateAsync(user, cancellationToken))
+            .MapError(_ => AuthErrors.UpdateFailed())
+            .Map(_ => new AuthResponse(
+                accessToken,
+                refreshToken,
+                DateTime.UtcNow.Add(AccessTokenExpiration),
+                ToDto(user)));
     }
 
     internal static UserDto ToDto(User user) =>
@@ -82,27 +78,35 @@ public sealed class LoginCommandHandler(
 /// <param name="userRepository">The user repository.</param>
 /// <param name="jwtTokenService">The token service.</param>
 public sealed class RegisterCommandHandler(IUserRepository userRepository, IJwtTokenService jwtTokenService)
-    : IRequestHandler<RegisterCommand, Result<AuthResponse>>
+    : IRequestHandler<RegisterCommand, AuthResponse>
 {
     private static readonly TimeSpan AccessTokenExpiration = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RefreshTokenExpiration = TimeSpan.FromDays(7);
 
     /// <inheritdoc />
-    public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<Result<AuthResponse, RequestError>> Handle(
+        RegisterCommand request,
+        CancellationToken cancellationToken)
     {
-        var existsResult = await userRepository.ExistsAsync(request.Request.Email, cancellationToken);
-        if (!existsResult.TryGetValue(out var exists))
-        {
-            return Result<AuthResponse>.Failure(
-                AuthErrors.LookupFailed());
-        }
+        var result = await userRepository.ExistsAsync(request.Request.Email, cancellationToken)
+            .MapErrorAsync(
+                (_, _) => ValueTask.FromResult(AuthErrors.LookupFailed()),
+                cancellationToken)
+            .EnsureAsync(
+                (exists, _) => ValueTask.FromResult(!exists),
+                AuthErrors.EmailExists(),
+                cancellationToken)
+            .BindAsync(
+                (_, token) => CreateAndRespond(request, token),
+                cancellationToken);
 
-        if (exists)
-        {
-            return Result<AuthResponse>.Failure(
-                AuthErrors.EmailExists());
-        }
+        return result.ToRequestResult();
+    }
 
+    private async ValueTask<Result<AuthResponse>> CreateAndRespond(
+        RegisterCommand request,
+        CancellationToken cancellationToken)
+    {
         var user = new User
         {
             Email = request.Request.Email,
@@ -112,25 +116,23 @@ public sealed class RegisterCommandHandler(IUserRepository userRepository, IJwtT
             CreatedBy = request.Request.Email
         };
 
-        var createResult = await userRepository.CreateAsync(user, cancellationToken);
-        if (!createResult.TryGetValue(out user) || user is null)
-        {
-            return Result<AuthResponse>.Failure(
-                AuthErrors.CreateFailed());
-        }
+        return (await userRepository.CreateAsync(user, cancellationToken))
+            .MapError(_ => AuthErrors.CreateFailed())
+            .Map(BuildResponse);
+    }
 
+    private AuthResponse BuildResponse(User user)
+    {
         var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email);
         var refreshToken = jwtTokenService.GenerateRefreshToken();
 
         user.UpdateRefreshToken(refreshToken, RefreshTokenExpiration);
 
-        var response = new AuthResponse(
+        return new AuthResponse(
             accessToken,
             refreshToken,
             DateTime.UtcNow.Add(AccessTokenExpiration),
             LoginCommandHandler.ToDto(user));
-
-        return Result<AuthResponse>.Success(response);
     }
 }
 
@@ -138,77 +140,84 @@ public sealed class RegisterCommandHandler(IUserRepository userRepository, IJwtT
 /// <param name="userRepository">The user repository.</param>
 /// <param name="jwtTokenService">The token service.</param>
 public sealed class RefreshTokenCommandHandler(IUserRepository userRepository, IJwtTokenService jwtTokenService)
-    : IRequestHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
+    : IRequestHandler<RefreshTokenCommand, RefreshTokenResponse>
 {
     private static readonly TimeSpan AccessTokenExpiration = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RefreshTokenExpiration = TimeSpan.FromDays(7);
 
     /// <inheritdoc />
-    public async Task<Result<RefreshTokenResponse>> Handle(
+    public async Task<Result<RefreshTokenResponse, RequestError>> Handle(
         RefreshTokenCommand request,
         CancellationToken cancellationToken)
     {
-        var (userId, _) = jwtTokenService.ValidateToken(request.Request.RefreshToken);
-        if (userId is null)
-        {
-            return Result<RefreshTokenResponse>.Failure(
-                AuthErrors.InvalidRefreshToken());
-        }
+        var result = await Task.FromResult(jwtTokenService.ValidateToken(request.Request.RefreshToken))
+            .BindAsync(
+                (identity, token) => LoadAndRotate(identity, request.Request.RefreshToken, token),
+                cancellationToken);
 
-        var userResult = await userRepository.GetByIdAsync(userId.Value, cancellationToken);
-        if (!userResult.TryGetValue(out var user) || user is null)
-        {
-            return Result<RefreshTokenResponse>.Failure(
-                AuthErrors.UserNotFound());
-        }
+        return result.ToRequestResult();
+    }
 
-        if (!user.IsRefreshTokenValid() || user.RefreshToken != request.Request.RefreshToken)
-        {
-            return Result<RefreshTokenResponse>.Failure(
-                AuthErrors.RefreshTokenExpired());
-        }
+    private async ValueTask<Result<RefreshTokenResponse>> LoadAndRotate(
+        TokenIdentity identity,
+        string refreshToken,
+        CancellationToken cancellationToken)
+    {
+        var userResult = (await userRepository.GetByIdAsync(identity.UserId, cancellationToken))
+            .MapError(_ => AuthErrors.UserNotFound());
 
-        var newAccessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email);
-        var newRefreshToken = jwtTokenService.GenerateRefreshToken();
+        return await Task.FromResult(userResult)
+            .EnsureAsync(
+                (user, _) => ValueTask.FromResult(
+                    user.IsRefreshTokenValid() && user.RefreshToken == refreshToken),
+                AuthErrors.RefreshTokenExpired(),
+                cancellationToken)
+            .BindAsync((user, token) => Rotate(user, token), cancellationToken);
+    }
 
-        user.UpdateRefreshToken(newRefreshToken, RefreshTokenExpiration);
+    private async ValueTask<Result<RefreshTokenResponse>> Rotate(
+        User user,
+        CancellationToken cancellationToken)
+    {
+        var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email);
+        var refreshToken = jwtTokenService.GenerateRefreshToken();
 
-        var updateResult = await userRepository.UpdateAsync(user, cancellationToken);
-        if (updateResult.IsFailure)
-        {
-            return Result<RefreshTokenResponse>.Failure(
-                AuthErrors.UpdateFailed());
-        }
+        user.UpdateRefreshToken(refreshToken, RefreshTokenExpiration);
 
-        var response = new RefreshTokenResponse(
-            newAccessToken,
-            newRefreshToken,
-            DateTime.UtcNow.Add(AccessTokenExpiration));
-
-        return Result<RefreshTokenResponse>.Success(response);
+        return (await userRepository.UpdateAsync(user, cancellationToken))
+            .MapError(_ => AuthErrors.UpdateFailed())
+            .Map(_ => new RefreshTokenResponse(
+                accessToken,
+                refreshToken,
+                DateTime.UtcNow.Add(AccessTokenExpiration)));
     }
 }
 
 /// <summary>Handles <see cref="LogoutCommand"/>.</summary>
 /// <param name="userRepository">The user repository.</param>
 public sealed class LogoutCommandHandler(IUserRepository userRepository)
-    : IRequestHandler<LogoutCommand, Result>
+    : IRequestHandler<LogoutCommand, Unit>
 {
     /// <inheritdoc />
-    public async Task<Result> Handle(LogoutCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Unit, RequestError>> Handle(
+        LogoutCommand request,
+        CancellationToken cancellationToken)
     {
         var userResult = await userRepository.GetByIdAsync(request.UserId, cancellationToken);
-        if (userResult.TryGetValue(out var user) && user is not null)
-        {
-            user.ClearRefreshToken();
 
-            var updateResult = await userRepository.UpdateAsync(user, cancellationToken);
-            if (updateResult.IsFailure)
-            {
-                return Result.Failure(AuthErrors.LogoutFailed());
-            }
-        }
+        var result = await userResult.Match(
+            user => ClearAndPersist(user, cancellationToken),
+            _ => Task.FromResult(Result.Success()));
 
-        return Result.Success();
+        return result.ToUnitRequestResult();
+    }
+
+    private async Task<Result> ClearAndPersist(User user, CancellationToken cancellationToken)
+    {
+        user.ClearRefreshToken();
+
+        return (await userRepository.UpdateAsync(user, cancellationToken))
+            .MapError(_ => AuthErrors.LogoutFailed())
+            .ToUnitResult();
     }
 }

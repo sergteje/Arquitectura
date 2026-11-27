@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="ResulTus" />
     <PackageReference Include="ResulTus.SourceGenerators" />
+    <PackageReference Include="ResulTus.Validation" />
   </ItemGroup>
 
 </Project>

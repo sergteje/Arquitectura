@@ -36,6 +36,7 @@ S13. `async`/`await` and `CancellationToken` on every asynchronous operation.
 S14. Tests: unit, integration, architecture (module isolation) and endpoint regression. `dotnet build` (Release) and `dotnet test` must pass.
 S15. Docker (root `Dockerfile` + `docker-compose.yml`), Aspire AppHost and the React client keep working.
 S16. Documentation updated: `README.md`, `AGENTS.md`, `ARCHITECTURE.md`, `MODULE_BOUNDARIES.md`, `ENDPOINT_INVENTORY.md`, `DEPLOYMENT.md`, `TECHNICAL_DEBT.md`, `ADR/`.
+S17. The mediator contract carries the validation payload: `IRequestHandler<TRequest,TResponse>` returns `Task<Result<TResponse, RequestError>>`, where `RequestError` pairs an `Error` with the optional `ValidationErrors`. `ValidationBehavior` returns that failure instead of throwing `RequestValidationException`. Handlers compose the single-error `Result<T>` tier internally and cross into the mediator tier once (`ToRequestResult`/`ToUnitRequestResult`). No exception remains in the application layer, and no HTTP contract changes.
 
 ## Tasks
 
@@ -156,3 +157,14 @@ L14 CurrentUser ROP (user request):
 - Auth logout and the four DataTable endpoints compose it with `Match`; no exception at the identity boundary.
 - The validation boundary (`RequestValidationException`) is the only exception left; ADR-011/AGENTS updated.
 Verification: Release build 0 errors/0 warnings; `dotnet test` 71/71; E2E 11/11.
+
+L15 Full mediator contract change (user request: "Cambio completo"):
+- `IRequestHandler`/`IPipelineBehavior`/`ISender` return `Task<Result<TResponse, RequestError>>`; `TResponse` is now the success payload (`Unit` for 204 commands).
+- `RequestError` (`Error` + optional `ValidationErrors`) lives in `BuildingBlocks.Abstractions.Mediator`; `ResulTus.Validation` was added to that project.
+- `ValidationBehavior` short-circuits with a failed result; `RequestValidationException` and its `GlobalExceptionHandler` branch were deleted.
+- Handlers compose `Result<T>` internally and cross with `ToRequestResult`/`ToUnitRequestResult`; endpoints project the typed tier with `ToHttpResult`/`ToNoContentHttpResult`/`ToAcceptedHttpResult` from `BuildingBlocks.AspNetCore.RequestResultHttpResults`.
+- `ResilienceBehavior` retries transient results (`Failure`/`Timeout`/`Unexpected`) through Polly; the per-scope circuit breaker was removed because a scoped behavior never accumulated failures across requests, so it never opened.
+- Contract surface change: modules declare the payload (`ICommand<AuthResponse>`, `IQuery<DataTableConfigResponseDto>`) instead of `ICommand<Result<AuthResponse>>`; no HTTP shape changed.
+- Tests added: `ValidationBehaviorTests` (3) and `RequestResultHttpResultsTests` (4).
+- Documented in ADR-011, `ARCHITECTURE.md` and AGENTS rule 12.
+Verification: Release build 0 errors/0 warnings; `dotnet test` 78/78; E2E 11/11.

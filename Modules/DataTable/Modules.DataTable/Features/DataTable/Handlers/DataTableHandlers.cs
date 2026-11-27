@@ -8,55 +8,89 @@ namespace Modules.DataTable.Features.DataTable.Handlers;
 /// <summary>Handles <see cref="GetDataTableConfigQuery"/>.</summary>
 /// <param name="repository">The data-table repository.</param>
 public sealed class GetDataTableConfigQueryHandler(IDataTableRepository repository)
-    : IRequestHandler<GetDataTableConfigQuery, Result<DataTableConfigResponseDto>>
+    : IRequestHandler<GetDataTableConfigQuery, DataTableConfigResponseDto>
 {
     /// <inheritdoc />
-    public Task<Result<DataTableConfigResponseDto>> Handle(
+    public async Task<Result<DataTableConfigResponseDto, RequestError>> Handle(
         GetDataTableConfigQuery request,
         CancellationToken cancellationToken)
-        => repository.GetTableConfigAsync(request.TableKey, request.UserId, cancellationToken);
+    {
+        var result = await repository.GetTableConfigAsync(request.TableKey, request.UserId, cancellationToken);
+
+        return result.ToRequestResult();
+    }
 }
 
 /// <summary>Handles <see cref="SaveDataTableConfigCommand"/>.</summary>
 /// <param name="repository">The data-table repository.</param>
 public sealed class SaveDataTableConfigCommandHandler(IDataTableRepository repository)
-    : IRequestHandler<SaveDataTableConfigCommand, Result>
+    : IRequestHandler<SaveDataTableConfigCommand, Unit>
 {
     /// <inheritdoc />
-    public Task<Result> Handle(SaveDataTableConfigCommand request, CancellationToken cancellationToken)
-        => repository.SaveUserConfigAsync(request.TableKey, request.UserId, request.Config, cancellationToken);
+    public async Task<Result<Unit, RequestError>> Handle(
+        SaveDataTableConfigCommand request,
+        CancellationToken cancellationToken)
+    {
+        var result = await repository.SaveUserConfigAsync(
+            request.TableKey,
+            request.UserId,
+            request.Config,
+            cancellationToken);
+
+        return result.ToUnitRequestResult();
+    }
 }
 
 /// <summary>Handles <see cref="ResetDataTableConfigCommand"/>.</summary>
 /// <param name="repository">The data-table repository.</param>
 public sealed class ResetDataTableConfigCommandHandler(IDataTableRepository repository)
-    : IRequestHandler<ResetDataTableConfigCommand, Result>
+    : IRequestHandler<ResetDataTableConfigCommand, Unit>
 {
     /// <inheritdoc />
-    public Task<Result> Handle(ResetDataTableConfigCommand request, CancellationToken cancellationToken)
-        => repository.ResetUserConfigAsync(request.TableKey, request.UserId, cancellationToken);
+    public async Task<Result<Unit, RequestError>> Handle(
+        ResetDataTableConfigCommand request,
+        CancellationToken cancellationToken)
+    {
+        var result = await repository.ResetUserConfigAsync(
+            request.TableKey,
+            request.UserId,
+            cancellationToken);
+
+        return result.ToUnitRequestResult();
+    }
 }
 
 /// <summary>Handles <see cref="GetDataTableDataQuery"/>.</summary>
 /// <param name="repository">The data-table repository.</param>
 public sealed class GetDataTableDataQueryHandler(IDataTableRepository repository)
-    : IRequestHandler<GetDataTableDataQuery, Result<DataResponseDto<Dictionary<string, object>>>>
+    : IRequestHandler<GetDataTableDataQuery, DataResponseDto<Dictionary<string, object>>>
 {
     /// <inheritdoc />
-    public Task<Result<DataResponseDto<Dictionary<string, object>>>> Handle(
+    public async Task<Result<DataResponseDto<Dictionary<string, object>>, RequestError>> Handle(
         GetDataTableDataQuery request,
         CancellationToken cancellationToken)
-        => repository.GetTableDataAsync(request.TableKey, request.Request, cancellationToken);
+    {
+        var result = await repository.GetTableDataAsync(request.TableKey, request.Request, cancellationToken);
+
+        return result.ToRequestResult();
+    }
 }
 
 /// <summary>Handles <see cref="CreateDataTableExportCommand"/>.</summary>
 /// <param name="repository">The data-table repository.</param>
 public sealed class CreateDataTableExportCommandHandler(IDataTableRepository repository)
-    : IRequestHandler<CreateDataTableExportCommand, Result<DataTableExportResponseDto>>
+    : IRequestHandler<CreateDataTableExportCommand, DataTableExportResponseDto>
 {
     /// <inheritdoc />
-    public Task<Result<DataTableExportResponseDto>> Handle(
+    public async Task<Result<DataTableExportResponseDto, RequestError>> Handle(
         CreateDataTableExportCommand request,
         CancellationToken cancellationToken)
-        => repository.CreateExportRequestAsync(request.UserId, request.Request, cancellationToken);
+    {
+        var result = await repository.CreateExportRequestAsync(
+            request.UserId,
+            request.Request,
+            cancellationToken);
+
+        return result.ToRequestResult();
+    }
 }

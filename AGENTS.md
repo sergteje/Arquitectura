@@ -82,7 +82,8 @@ docker compose up -d   # Host + SQL Server + Redis + observability
 4. **No shared domain**: each module owns its entities and repositories. No cross-module entity reuse.
 5. **No circular dependencies**: modules never reference each other; communication is through contracts
    or `BuildingBlocks` abstractions.
-6. **BuildingBlocks is business-free**: `Abstractions` has no package dependencies beyond ResulTus;
+6. **BuildingBlocks is business-free**: `Abstractions` has no package dependencies beyond ResulTus
+   (core and validation);
    `Infrastructure` never references a module.
 7. **Results**: use the full ResulTus suite. Errors come from generated `[ResultErrors]` factories, not
    inline `Error.X("CODE", ...)`. HTTP bodies are RFC 9457 ProblemDetails (`detail`, `code`, validation
@@ -93,8 +94,9 @@ docker compose up -d   # Host + SQL Server + Redis + observability
 10. **Configuration**: Options-based, no hardcoded secrets. `Jwt:Key` is mandatory.
 11. **API docs**: OpenAPI at `/openapi/v1.json`, Scalar UI at `/scalar`. Do not reintroduce Swashbuckle.
 12. **ROP in application code**: handlers compose with `Bind`/`Ensure`/`Map`/`MapError`; repositories
-    use `Result.TryAsync`, never `try/catch`. The only exception is `ValidationBehavior` (structured
-    validation errors); `CurrentUser` exposes `Result<int> UserIdResult`.
+    use `Result.TryAsync`, never `try/catch`. Validation is data, not an exception: the mediator returns
+    `Result<TResponse, RequestError>` and `ValidationBehavior` short-circuits with `ValidationErrors`.
+    `CurrentUser` exposes `Result<int> UserIdResult`.
 
 ## Persistence
 

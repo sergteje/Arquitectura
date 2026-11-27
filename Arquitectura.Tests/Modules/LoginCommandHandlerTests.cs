@@ -74,8 +74,8 @@ public class LoginCommandHandlerTests
             CancellationToken.None);
 
         var error = result.ShouldFail();
-        error.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
-        error.Type.Should().Be(ErrorType.Unauthorized);
+        error.Error.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
+        error.Error.Type.Should().Be(ErrorType.Unauthorized);
     }
 
     [Fact]
@@ -92,6 +92,6 @@ public class LoginCommandHandlerTests
             CancellationToken.None);
 
         var error = result.ShouldFail();
-        error.Type.Should().Be(ErrorType.Unauthorized);
+        error.Error.Type.Should().Be(ErrorType.Unauthorized);
     }
 }
