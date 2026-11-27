@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net11.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Modules.Weather.Api</RootNamespace>
     <Description>Weather module HTTP endpoints (Minimal API).</Description>
   </PropertyGroup>

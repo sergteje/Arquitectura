@@ -1,16 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net11.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Modules.Auth</RootNamespace>
     <Description>Auth module: domain, public contracts, use cases and persistence abstractions.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentValidation" Version="12.1.1" />
-    <PackageReference Include="ResulTus" Version="1.3.0" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="ResulTus" />
   </ItemGroup>
 
   <ItemGroup>
