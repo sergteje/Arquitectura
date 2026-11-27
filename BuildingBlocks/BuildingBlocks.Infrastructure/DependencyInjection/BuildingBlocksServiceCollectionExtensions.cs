@@ -38,19 +38,16 @@ public static class BuildingBlocksServiceCollectionExtensions
         services.Configure<RedisOptions>(options =>
             configuration.GetSection(RedisOptions.SectionName).Bind(options));
 
-        services.TryAddSingleton<IConnectionMultiplexer>(serviceProvider =>
-        {
-            var redisOptions = serviceProvider.GetRequiredService<IOptions<RedisOptions>>().Value;
+        var redisConnection = configuration[$"{RedisOptions.SectionName}:Connection"] ?? "localhost:6379";
 
-            var configurationOptions = ConfigurationOptions.Parse(redisOptions.Connection);
+        services.TryAddSingleton<IConnectionMultiplexer>(_ =>
+        {
+            var configurationOptions = ConfigurationOptions.Parse(redisConnection);
             configurationOptions.AbortOnConnectFail = false;
 
             return ConnectionMultiplexer.Connect(configurationOptions);
         });
 
-        var redisConnection = configuration[$"{RedisOptions.SectionName}:Connection"] ?? "localhost:6379";
-
-        services.AddStackExchangeRedisCache(options => options.Configuration = redisConnection);
         services.TryAddScoped<IDistributedCacheService, RedisCacheService>();
 
         services.AddMediator();

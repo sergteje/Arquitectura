@@ -1,10 +1,9 @@
 using System.Data;
-using BuildingBlocks.Abstractions.Caching;
 using BuildingBlocks.Abstractions.Persistence;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace BuildingBlocks.Infrastructure.HealthChecks;
 
@@ -38,10 +37,10 @@ public sealed class SqlServerHealthCheck(IDbConnectionFactory connectionFactory)
 }
 
 /// <summary>
-/// Verifies a Redis round-trip through the distributed cache.
+/// Verifies a Redis round-trip through the shared multiplexer.
 /// </summary>
-/// <param name="cache">The distributed cache.</param>
-public sealed class RedisHealthCheck(IDistributedCache cache) : IHealthCheck
+/// <param name="redis">The shared Redis multiplexer.</param>
+public sealed class RedisHealthCheck(IConnectionMultiplexer redis) : IHealthCheck
 {
     /// <inheritdoc />
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -52,18 +51,14 @@ public sealed class RedisHealthCheck(IDistributedCache cache) : IHealthCheck
 
         try
         {
-            var expected = System.Text.Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O"));
+            var expected = DateTime.UtcNow.ToString("O");
+            var database = redis.GetDatabase();
 
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(5)
-            };
+            await database.StringSetAsync(HealthKey, expected, TimeSpan.FromSeconds(5));
+            var actual = await database.StringGetAsync(HealthKey);
+            await database.KeyDeleteAsync(HealthKey);
 
-            await cache.SetAsync(HealthKey, expected, options, cancellationToken);
-            var actual = await cache.GetAsync(HealthKey, cancellationToken);
-            await cache.RemoveAsync(HealthKey, cancellationToken);
-
-            return actual is not null && actual.SequenceEqual(expected)
+            return actual == expected
                 ? HealthCheckResult.Healthy("Redis is responding correctly")
                 : HealthCheckResult.Unhealthy("Redis read/write verification failed");
         }

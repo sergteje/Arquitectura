@@ -1,6 +1,5 @@
 using System.Text;
 using BuildingBlocks.Abstractions.Caching;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -8,14 +7,13 @@ using StackExchange.Redis;
 namespace BuildingBlocks.Infrastructure.Caching;
 
 /// <summary>
-/// Redis-backed <see cref="IDistributedCacheService"/>. Every failure is logged and swallowed: an
-/// unavailable cache degrades performance, never correctness.
+/// Redis-backed <see cref="IDistributedCacheService"/> built directly on the shared
+/// <see cref="IConnectionMultiplexer"/>. Every failure is logged and swallowed: an unavailable cache
+/// degrades performance, never correctness.
 /// </summary>
-/// <param name="distributedCache">The distributed cache.</param>
-/// <param name="redis">The multiplexer used for prefix eviction.</param>
+/// <param name="redis">The shared Redis multiplexer.</param>
 /// <param name="logger">The logger.</param>
 public sealed class RedisCacheService(
-    IDistributedCache distributedCache,
     IConnectionMultiplexer redis,
     ILogger<RedisCacheService> logger) : IDistributedCacheService
 {
@@ -26,13 +24,11 @@ public sealed class RedisCacheService(
     {
         try
         {
-            var payload = await distributedCache.GetAsync(key, cancellationToken);
-            if (payload is null)
-            {
-                return default;
-            }
+            var value = await redis.GetDatabase().StringGetAsync(key);
 
-            return JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(payload));
+            return value.HasValue
+                ? JsonConvert.DeserializeObject<T>(value.ToString())
+                : default;
         }
         catch (Exception exception)
         {
@@ -50,13 +46,8 @@ public sealed class RedisCacheService(
     {
         try
         {
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = expiration ?? DefaultExpiration
-            };
-
-            var payload = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value));
-            await distributedCache.SetAsync(key, payload, options, cancellationToken);
+            var payload = JsonConvert.SerializeObject(value);
+            await redis.GetDatabase().StringSetAsync(key, payload, expiration ?? DefaultExpiration);
         }
         catch (Exception exception)
         {
@@ -69,7 +60,7 @@ public sealed class RedisCacheService(
     {
         try
         {
-            await distributedCache.RemoveAsync(key, cancellationToken);
+            await redis.GetDatabase().KeyDeleteAsync(key);
         }
         catch (Exception exception)
         {
@@ -91,10 +82,7 @@ public sealed class RedisCacheService(
                     continue;
                 }
 
-                var keys = server
-                    .Keys(pattern: $"{keyPrefix}*")
-                    .ToArray();
-
+                var keys = server.Keys(pattern: $"{keyPrefix}*").ToArray();
                 if (keys.Length > 0)
                 {
                     await database.KeyDeleteAsync(keys);
@@ -110,7 +98,14 @@ public sealed class RedisCacheService(
     /// <inheritdoc />
     public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
-        var payload = await distributedCache.GetAsync(key, cancellationToken);
-        return payload is not null;
+        try
+        {
+            return await redis.GetDatabase().KeyExistsAsync(key);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Error checking cache key {CacheKey}", key);
+            return false;
+        }
     }
 }
