@@ -84,8 +84,9 @@ docker compose up -d   # Host + SQL Server + Redis + observability
    or `BuildingBlocks` abstractions.
 6. **BuildingBlocks is business-free**: `Abstractions` has no package dependencies beyond ResulTus;
    `Infrastructure` never references a module.
-7. **Results**: use `ResulTus` (`Result`, `Result<T>`, `Error`, `ErrorType`). Do not reintroduce a
-   custom result type. Error bodies stay `{ code, message, details }`.
+7. **Results**: use the full ResulTus suite. Errors come from generated `[ResultErrors]` factories, not
+   inline `Error.X("CODE", ...)`. HTTP bodies are RFC 9457 ProblemDetails (`detail`, `code`, validation
+   `errors`). Do not reintroduce a custom result type or error body.
 8. **Caching**: explicit read-through via `QueryCachingExtensions.GetOrSetAsync`; never cache
    non-round-trippable results.
 9. **Resilience**: only idempotent requests implement `IResilientRequest`.

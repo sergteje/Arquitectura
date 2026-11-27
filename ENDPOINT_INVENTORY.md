@@ -30,11 +30,11 @@ Notes:
   `api/WeatherForecast`, `api/DataTable`. The lowercase forms above are what the frontend uses.
 - `GET /health` includes SQL Server, database, Hangfire and Redis checks. `GET /alive` only runs the
   `live`-tagged self check. Both are mapped in every environment and expose only the aggregate status.
-- Errors keep the body `{ "code": string, "message": string, "details": object|null }`. Status mapping:
-  400 validation/failure, 401 unauthorized, 403 forbidden, 404 not found, 409 conflict, 429 rate limited,
-  503 service unavailable (`RETRY_EXHAUSTED`), 504 timeout.
+- Errors use RFC 9457 ProblemDetails: `{ type, title, status, detail, code }`. Field validation failures
+  add `errors: { "Field": ["message"] }` and use 400. `ResultStatus.Map` keeps the legacy status codes
+  (including `Failure` → 400) and delegates the rest to `ResultHttpStatus.GetStatusCode`.
 - Rate limiting uses the fixed window policy `fixed` (100 requests/minute) on all `/api` controllers.
 - A 429 response uses the historical ProblemDetails-like body with `retryAfter`.
 
-Frontend coupling: `Arquitectura.Client/src/lib/constants.ts` sets `API_BASE`; the data table client
-reads `error.message` from the error body. Both are satisfied by this contract.
+Frontend coupling: `Arquitectura.Client/src/lib/constants.ts` sets `API_BASE`; `src/lib/problem.ts`
+reads `detail`, then the field `errors`, then `title`. Both are satisfied by this contract.

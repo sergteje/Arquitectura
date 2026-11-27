@@ -124,7 +124,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md), [MODULE_BOUNDARIES.md](MODULE_BOUNDARIES
 - **Modular monolith**: one deployable, modules with hard boundaries and their own persistence.
 - **CQRS via a first-party mediator**: commands and queries, pipeline behaviors for logging, validation, resilience and cache invalidation.
 - **Persistence**: Dapper over stored procedures; modules own their SQL.
-- **Results**: `ResulTus` `Result`/`Result<T>` with a typed `Error`; HTTP mapping preserves the `{ code, message, details }` body.
+- **Results**: `ResulTus` `Result`/`Result<T>` with a typed `Error`; the HTTP mapping is RFC 9457 ProblemDetails (`detail`, `code`, validation `errors`).
 - **Caching**: explicit read-through (`QueryCachingExtensions.GetOrSetAsync`) instead of a behavior, because `Result<T>` is not serializable.
 - **API docs**: native OpenAPI + Scalar (`/openapi/v1.json`, `/scalar`).
 

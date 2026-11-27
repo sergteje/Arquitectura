@@ -81,13 +81,19 @@ HTTP request
 Results use **ResulTus 1.3.0**. A handler returns `Result<T>` (or `Result`). Failures carry a typed
 `Error` with a stable `Code`, a `Message` and an `ErrorType`.
 
-`BuildingBlocks.AspNetCore.ResultHttpExtensions` maps results to HTTP:
+`BuildingBlocks.AspNetCore.ResultStatus` maps results to HTTP:
 
 - legacy codes keep their historical status (`NOT_FOUND` → 404, `VALIDATION_ERROR` → 400,
   `RETRY_EXHAUSTED` → 503, `TIMEOUT` → 504);
-- otherwise the status is derived from `ErrorType`;
-- `ErrorType.Failure` maps to 400 to preserve the legacy default for database failures;
-- the body is always `{ code, message, details }` (details currently `null`).
+- a generic `ErrorType.Failure` stays 400 (the old default for database failures);
+- every other category delegates to `ResulTus.AspNetCore`'s `ResultHttpStatus.GetStatusCode`;
+- the body is RFC 9457 ProblemDetails (`{ type, title, status, detail, code }`); validation failures
+  include the `errors` field map.
+
+The result pipeline dogfoods the whole ResulTus suite: `Extensions` (`Ensure`), `AspNetCore`
+(ProblemDetails), `Validation` + `Validation.FluentValidation` (structured field errors),
+`SourceGenerators` (`[ResultErrors]` factories), `Logging` (login audit), `Testing` (assertions) and
+`Analyzers` (build-time checks).
 
 ## Security
 

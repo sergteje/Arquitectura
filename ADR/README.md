@@ -10,10 +10,11 @@ Consequences**.
 | ADR-003 | One `BuildingBlocks.Infrastructure` | Accepted |
 | ADR-004 | First-party mediator replaces MediatR | Accepted |
 | ADR-005 | Explicit read-through caching | Accepted |
-| ADR-006 | Preserve error body and status mapping | Accepted |
+| ADR-006 | Preserve error body and status mapping | Superseded by ADR-010 |
 | ADR-007 | Fix pre-existing defects as part of the move | Accepted |
 | ADR-008 | Missing `sp_DeleteUserTableConfig` documented, later added | Resolved |
 | ADR-009 | Minimal API endpoints owned by each module | Accepted |
+| ADR-010 | Dogfood the full ResulTus suite | Accepted |
 
 ---
 
@@ -101,17 +102,19 @@ evict. `Result<T>` stays un-serialized.
 
 ## ADR-006 — Preserve error body and status mapping
 
+**Status: superseded by ADR-010.** The original decision kept a host-local `{ code, message, details }`
+body. ADR-010 replaces it with RFC 9457 ProblemDetails from `ResulTus.AspNetCore`.
+
 **Context.** The frontend reads `error.message`; the previous API returned
 `{ code, message, details }`. `ResulTus.AspNetCore.ToActionResult` emits RFC 9457 ProblemDetails, which
 would break the frontend.
 
-**Decision.** Keep a Host-local mapper, `ResultHttpExtensions`, that emits `ErrorResponse`
+**Decision (historical).** Keep a Host-local mapper, `ResultHttpExtensions`, that emits `ErrorResponse`
 (`{ code, message, details }`). Legacy codes keep their historical status; other errors map from
 `ErrorType`. `ErrorType.Failure` maps to 400 to preserve the old default for `DATABASE_ERROR`.
 
-**Consequences.** No frontend change. The HTTP contract is documented in `ENDPOINT_INVENTORY.md`.
-Normalizations against the written inventory (201 for register, 401 for auth failures) are logged in
-the migration document.
+**Consequences.** No frontend change at the time. The HTTP contract was documented in
+`ENDPOINT_INVENTORY.md`. This decision was later reversed in ADR-010.
 
 ---
 
@@ -171,4 +174,41 @@ Host-local mapper were removed.
 - Minimal API binding is explicit (`[FromQuery]`, nullable query parameters with defaults); there are no
   MVC conventions to rely on.
 - OpenAPI/Scalar continue to work through `AddOpenApi()`/`MapOpenApi()`, with `.Produces<T>()` metadata.
-- The error body and status mapping are unchanged because they moved to `BuildingBlocks.AspNetCore`.
+- The error body and status mapping moved to `BuildingBlocks.AspNetCore`; ADR-010 later switched the
+  body to RFC 9457 ProblemDetails.
+
+---
+
+## ADR-010 — Dogfood the full ResulTus suite
+
+**Context.** The author of ResulTus owns this repository and uses it as a real test bed for the
+package family. The goal is to exercise the packages in production-shaped code, not only the core
+`Result` type.
+
+**Decision.** Adopt the whole suite:
+
+| Package | Use |
+|---|---|
+| `ResulTus` | Core result types (already in use) |
+| `ResulTus.Extensions` | `Ensure`/`Map`/`Bind` in handlers (`LoginCommandHandler`) |
+| `ResulTus.AspNetCore` | `ToHttpResult`/problem results; RFC 9457 ProblemDetails |
+| `ResulTus.Validation` | `ValidationErrors`/`ValidationIssue` for structured failures |
+| `ResulTus.Validation.FluentValidation` | `ValidateAsync` inside the mediator validation behavior |
+| `ResulTus.SourceGenerators` | `[ResultErrors]`/`[ErrorFactory]` error factories per module |
+| `ResulTus.Logging` | `LogAll` on the login result (structured auth audit) |
+| `ResulTus.Testing` | `ShouldSucceed`/`ShouldFail` in handler tests |
+| `ResulTus.Analyzers` | `RESULT001..008` as build-time warnings on every project |
+
+**Consequences.**
+
+- The error body is RFC 9457 ProblemDetails: `{ type, title, status, detail, code }` and validation
+  failures carry `errors` per field. The frontend was updated to read `detail`/`errors`
+  (`src/lib/problem.ts`).
+- `ResultStatus.Map` keeps the legacy status codes (including `Failure` → 400) and delegates the rest to
+  `ResultHttpStatus.GetStatusCode`.
+- Validation runs before logging and throws `RequestValidationException` carrying `ValidationErrors`; the
+  host renders it through `ResulTus.AspNetCore`'s validation conversion.
+- Error codes and messages live in generated factories (`CommonErrors`, `AuthErrors`, `WeatherErrors`,
+  `DataTableErrors`) instead of inline `Error.X("CODE", ...)` calls.
+- `ResulTus.Logging` cannot be used inside the generic `LoggingBehavior` because `Result<T>` has no
+  non-generic abstraction; it is used where the concrete result type is known (login audit).

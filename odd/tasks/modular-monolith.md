@@ -124,3 +124,14 @@ L10 Build hygiene and package refresh (user request):
 - `Arquitectura.slnx` now uses solution folders (`Backend/Host`, `Backend/BuildingBlocks`, `Backend/Modules/*`, `Backend/Tests`, `Infrastructure`, `Frontend`). Solution folders are VS organization only; DLLs and deployment are unchanged.
 - Fixed `CA2264` in `ResultHttpExtensions.ToErrorResult` (ResulTus `Error` is a struct).
 Verification: Release build 0 errors/0 warnings; `dotnet test` 70/70; E2E 11/11.
+
+L11 Full ResulTus dogfooding (user request): "Todos los paquetes de resultus los cree yo, para poderlos usar y simplificar eliminar boilerplate".
+- Added `ResulTus.Analyzers` globally via `Directory.Build.props`.
+- HTTP: `ResulTus.AspNetCore` now renders RFC 9457 ProblemDetails. `ResultStatus.Map` keeps legacy codes and delegates to `ResultHttpStatus`; `ResultHttpResults` adds 204/201/202 helpers. Removed the custom `{code,message,details}` mapper.
+- Validation: `ResulTus.Validation.FluentValidation.ValidateAsync` in `ValidationBehavior`; `RequestValidationException` carries `ValidationErrors`; the host renders the `errors` field map through `ResulTus.AspNetCore`.
+- Errors: `ResulTus.SourceGenerators` `[ResultErrors]` factories (`CommonErrors`, `AuthErrors`, `WeatherErrors`, `DataTableErrors`) replaced every inline `Error.X("CODE", ...)`.
+- Extensions: `Ensure` in `LoginCommandHandler`.
+- Logging: `LogAll` on the login result, with auth failures at Warning.
+- Testing: `ShouldSucceed`/`ShouldFail` in `LoginCommandHandlerTests`.
+- Frontend: `src/lib/problem.ts` reads `detail`, then `errors`, then `title`; `weatherApi`/`dataTableApi` parse problem documents.
+Verification: Release build 0 errors/0 warnings; `dotnet test` 71/71; frontend lint/build OK; E2E 11/11.
