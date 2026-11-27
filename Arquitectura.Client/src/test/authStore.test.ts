@@ -11,7 +11,7 @@ describe('useAuthStore', () => {
   it('should login and set user', () => {
     const login = useAuthStore.getState().login
     
-    const result = login({
+    login({
       user: { id: 1, email: 'test@test.com', firstName: 'John', lastName: 'Doe' },
       accessToken: 'token123',
       refreshToken: 'refresh123',

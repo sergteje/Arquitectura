@@ -1,7 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 
+import { problemMessage } from '@/lib/problem'
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8081'
+
+async function ensureOk(res: Response, fallback: string): Promise<void> {
+  if (res.ok) return
+  const problem = await res.json().catch(() => null)
+  throw new Error(problemMessage(problem, fallback))
+}
 
 // Types
 export interface WeatherForecast {
@@ -46,7 +54,7 @@ export const weatherApi = {
         hasPreviousPage: false
       }
     }
-    if (!res.ok) throw new Error('Failed to fetch forecasts')
+    await ensureOk(res, 'Failed to fetch forecasts')
     return res.json()
   },
 
@@ -55,7 +63,7 @@ export const weatherApi = {
     const res = await fetch(`${API_BASE}/api/weatherforecast/${id}`, {
       headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
-    if (!res.ok) throw new Error('Failed to fetch forecast')
+    await ensureOk(res, 'Failed to fetch forecast')
     return res.json()
   },
 
@@ -69,7 +77,7 @@ export const weatherApi = {
       },
       body: JSON.stringify(data),
     })
-    if (!res.ok) throw new Error('Failed to create forecast')
+    await ensureOk(res, 'Failed to create forecast')
     return res.json()
   },
 
@@ -83,7 +91,7 @@ export const weatherApi = {
       },
       body: JSON.stringify(data),
     })
-    if (!res.ok) throw new Error('Failed to update forecast')
+    await ensureOk(res, 'Failed to update forecast')
     return res.json()
   },
 
@@ -93,7 +101,7 @@ export const weatherApi = {
       method: 'DELETE',
       headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
     })
-    if (!res.ok) throw new Error('Failed to delete forecast')
+    await ensureOk(res, 'Failed to delete forecast')
   },
 }
 

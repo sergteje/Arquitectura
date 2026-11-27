@@ -65,7 +65,7 @@ export function WeatherForm({ forecast, onCancel, onSuccess }: WeatherFormProps)
             form.reset()
             onSuccess()
           },
-          onError: (error: any) => {
+          onError: (error: Error) => {
             toast.error('Failed to update forecast', {
               description: error.message,
             })
@@ -79,7 +79,7 @@ export function WeatherForm({ forecast, onCancel, onSuccess }: WeatherFormProps)
           form.reset()
           onSuccess()
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
           toast.error('Failed to create forecast', {
             description: error.message,
           })

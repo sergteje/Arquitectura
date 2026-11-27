@@ -1,0 +1,16 @@
+<Project>
+
+  <!-- Applies to C# projects only; the SQL project and the frontend esproj are untouched. -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <PackageReference Include="ResulTus.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

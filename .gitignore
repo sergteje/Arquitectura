@@ -70,6 +70,14 @@ logs/
 TestResults/
 coverage/
 
+# Playwright
+playwright-report/
+test-results/
+
+# TypeScript build artifacts
+*.tsbuildinfo
+vite.config.d.ts
+
 # Secrets - NEVER commit these
 *.pfx
 *.p12

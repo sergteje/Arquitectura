@@ -1,8 +1,9 @@
 import { test, expect, type Page } from '@playwright/test'
+import { randomUUID } from 'node:crypto'
 
 // Helper to register a new user and get to the weather list
 async function registerAndLogin(page: Page) {
-  const uniqueEmail = `test${Date.now()}@example.com`
+  const uniqueEmail = `test-${randomUUID()}@example.com`
   await page.goto('/login')
   await page.getByRole('button', { name: 'Register' }).click()
   await page.getByLabel('First Name').fill('Test')
@@ -25,7 +26,7 @@ test.describe('Weather App', () => {
 
   test('should register new user', async ({ page }) => {
     await page.goto('/login')
-    const uniqueEmail = `test${Date.now()}@example.com`
+    const uniqueEmail = `test-${randomUUID()}@example.com`
     await page.getByRole('button', { name: 'Register' }).click()
     await page.getByLabel('First Name').fill('Test')
     await page.getByLabel('Last Name').fill('User')

@@ -1,4 +1,4 @@
-using Arquitectura.Domain.Entities;
+using BuildingBlocks.Abstractions.Domain;
 using FluentAssertions;
 using Xunit;
 

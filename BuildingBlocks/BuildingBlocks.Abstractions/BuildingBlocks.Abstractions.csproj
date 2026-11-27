@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>BuildingBlocks.Abstractions</RootNamespace>
+    <Description>Technical shared contracts. No business logic.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ResulTus" />
+    <PackageReference Include="ResulTus.SourceGenerators" />
+  </ItemGroup>
+
+</Project>

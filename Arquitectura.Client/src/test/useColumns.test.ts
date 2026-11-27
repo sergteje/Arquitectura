@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { useColumns } from '../components/common/useColumns'
 import React from 'react'
 
@@ -29,6 +29,6 @@ describe('useColumns', () => {
     
     const columns = useColumns(config, false)
     
-    expect(columns[0].render?.({ name: 'John' } as any, false)).toBeDefined()
+    expect(columns[0].render?.({ name: 'John' }, false)).toBeDefined()
   })
 })

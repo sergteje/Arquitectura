@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
-using Arquitectura.Domain.Specifications;
+using BuildingBlocks.Abstractions.Pagination;
+using BuildingBlocks.Abstractions.Specifications;
 using FluentAssertions;
 using Xunit;
 

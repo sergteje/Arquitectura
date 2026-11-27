@@ -1,18 +1,51 @@
 <Solution>
-  <Project Path="Arquitectura.Api/Arquitectura.Api.csproj" />
-  <Project Path="Arquitectura.AppHost/Arquitectura.AppHost.csproj" />
-  <Project Path="Arquitectura.Application/Arquitectura.Application.csproj" />
-  <Project Path="Arquitectura.Client/Arquitectura.Client.esproj">
-    <Build />
-    <Deploy />
-  </Project>
-  <Project Path="Arquitectura.Database/Arquitectura.Database.sqlproj" Id="5802c119-7f95-4a1f-9c67-314b570ffb4e">
-    <Build />
-    <Deploy />
-  </Project>
-  <Project Path="Arquitectura.Domain/Arquitectura.Domain.csproj" />
-  <Project Path="Arquitectura.Infrastructure/Arquitectura.Infrastructure.csproj" />
-  <Project Path="Arquitectura.Persistence/Arquitectura.Persistence.csproj" />
-  <Project Path="Arquitectura.ServiceDefaults/Arquitectura.ServiceDefaults.csproj" />
-  <Project Path="Arquitectura.Tests/Arquitectura.Tests.csproj" />
+
+  <Folder Name="/Backend/" />
+  <Folder Name="/Backend/Host/">
+    <Project Path="Arquitectura.Host/Arquitectura.Host.csproj" />
+    <Project Path="Arquitectura.ServiceDefaults/Arquitectura.ServiceDefaults.csproj" />
+  </Folder>
+
+  <Folder Name="/Backend/BuildingBlocks/">
+    <Project Path="BuildingBlocks/BuildingBlocks.Abstractions/BuildingBlocks.Abstractions.csproj" />
+    <Project Path="BuildingBlocks/BuildingBlocks.AspNetCore/BuildingBlocks.AspNetCore.csproj" />
+    <Project Path="BuildingBlocks/BuildingBlocks.Infrastructure/BuildingBlocks.Infrastructure.csproj" />
+  </Folder>
+
+  <Folder Name="/Backend/Modules/" />
+  <Folder Name="/Backend/Modules/Auth/">
+    <Project Path="Modules/Auth/Modules.Auth/Modules.Auth.csproj" />
+    <Project Path="Modules/Auth/Modules.Auth.Api/Modules.Auth.Api.csproj" />
+    <Project Path="Modules/Auth/Modules.Auth.Infrastructure/Modules.Auth.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Backend/Modules/Weather/">
+    <Project Path="Modules/Weather/Modules.Weather/Modules.Weather.csproj" />
+    <Project Path="Modules/Weather/Modules.Weather.Api/Modules.Weather.Api.csproj" />
+    <Project Path="Modules/Weather/Modules.Weather.Infrastructure/Modules.Weather.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Backend/Modules/DataTable/">
+    <Project Path="Modules/DataTable/Modules.DataTable/Modules.DataTable.csproj" />
+    <Project Path="Modules/DataTable/Modules.DataTable.Api/Modules.DataTable.Api.csproj" />
+    <Project Path="Modules/DataTable/Modules.DataTable.Infrastructure/Modules.DataTable.Infrastructure.csproj" />
+  </Folder>
+
+  <Folder Name="/Backend/Tests/">
+    <Project Path="Arquitectura.Tests/Arquitectura.Tests.csproj" />
+  </Folder>
+
+  <Folder Name="/Infrastructure/">
+    <Project Path="Arquitectura.AppHost/Arquitectura.AppHost.csproj" />
+    <Project Path="Arquitectura.Database/Arquitectura.Database.sqlproj" Id="5802c119-7f95-4a1f-9c67-314b570ffb4e">
+      <Build />
+      <Deploy />
+    </Project>
+  </Folder>
+
+  <Folder Name="/Frontend/">
+    <Project Path="Arquitectura.Client/Arquitectura.Client.esproj">
+      <Build />
+      <Deploy />
+    </Project>
+  </Folder>
+
 </Solution>

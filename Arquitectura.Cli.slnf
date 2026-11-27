@@ -1,0 +1,23 @@
+{
+  "solution": {
+    "path": "Arquitectura.slnx",
+    "projects": [
+      "Arquitectura.AppHost\\Arquitectura.AppHost.csproj",
+      "Arquitectura.Host\\Arquitectura.Host.csproj",
+      "Arquitectura.ServiceDefaults\\Arquitectura.ServiceDefaults.csproj",
+      "Arquitectura.Tests\\Arquitectura.Tests.csproj",
+      "BuildingBlocks\\BuildingBlocks.Abstractions\\BuildingBlocks.Abstractions.csproj",
+      "BuildingBlocks\\BuildingBlocks.AspNetCore\\BuildingBlocks.AspNetCore.csproj",
+      "BuildingBlocks\\BuildingBlocks.Infrastructure\\BuildingBlocks.Infrastructure.csproj",
+      "Modules\\Auth\\Modules.Auth\\Modules.Auth.csproj",
+      "Modules\\Auth\\Modules.Auth.Api\\Modules.Auth.Api.csproj",
+      "Modules\\Auth\\Modules.Auth.Infrastructure\\Modules.Auth.Infrastructure.csproj",
+      "Modules\\DataTable\\Modules.DataTable\\Modules.DataTable.csproj",
+      "Modules\\DataTable\\Modules.DataTable.Api\\Modules.DataTable.Api.csproj",
+      "Modules\\DataTable\\Modules.DataTable.Infrastructure\\Modules.DataTable.Infrastructure.csproj",
+      "Modules\\Weather\\Modules.Weather\\Modules.Weather.csproj",
+      "Modules\\Weather\\Modules.Weather.Api\\Modules.Weather.Api.csproj",
+      "Modules\\Weather\\Modules.Weather.Infrastructure\\Modules.Weather.Infrastructure.csproj"
+    ]
+  }
+}
