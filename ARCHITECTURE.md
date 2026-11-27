@@ -14,13 +14,15 @@ the runtime composition.
 ## Layers
 
 ```
-Arquitectura.Host                     ← composition root + transport (controllers, middleware)
-        │  (references Contracts + AddXModule only)
+Arquitectura.Host                     ← composition root + transport (middleware, health, docs)
+        │  (references Contracts + Api + AddXModule)
         ▼
+Modules.X.Api ──► Modules.X.Contracts        (minimal API endpoint maps)
 Modules.X  ──►  BuildingBlocks.Abstractions        (module core: contracts, features, domain ports)
 Modules.X.Infrastructure ──► BuildingBlocks        (Dapper repositories, module services, DI)
         │
         ▼
+BuildingBlocks.AspNetCore ──► BuildingBlocks.Abstractions   (Result → IResult mapping)
 BuildingBlocks.Infrastructure ──► BuildingBlocks.Abstractions
 ```
 
@@ -30,23 +32,24 @@ The single entry point. It:
 
 - registers shared infrastructure (`AddBuildingBlocksInfrastructure`);
 - calls `AddAuthModule`, `AddWeatherModule`, `AddDataTableModule`;
+- maps the module endpoints (`MapAuthEndpoints`, `MapWeatherEndpoints`, `MapDataTableEndpoints`);
 - configures JWT bearer, CORS, rate limiting, OpenAPI + Scalar, Hangfire, health checks;
-- hosts the controllers and the web middleware;
-- maps the module `Result`/`Error` values to HTTP responses.
+- hosts the web middleware.
 
-It must not contain business logic and must not touch module internals beyond contracts and the DI
-extensions.
+It must not contain business logic and must not touch module internals beyond contracts, the endpoint
+maps and the DI extensions.
 
 ### Modules
 
-Each module is split into two projects:
+Each module is split into three projects:
 
 | Project | Contains | Depends on |
 |---------|----------|------------|
 | `Modules.X` | `Domain`, `Features` (commands, queries, handlers, validators), `Contracts`, `Persistence` ports | `BuildingBlocks.Abstractions` |
 | `Modules.X.Infrastructure` | Dapper repositories, JWT/token services, jobs, `AddXModule` | `Modules.X`, `BuildingBlocks.*` |
+| `Modules.X.Api` | Minimal API endpoint map (`MapXEndpoints`) | `Modules.X`, `BuildingBlocks.AspNetCore` |
 
-`Contracts` lives inside `Modules.X` and is the only surface other code may consume.
+`Contracts` and the `MapXEndpoints` extension are the only surfaces other code may consume.
 
 ### BuildingBlocks
 
@@ -55,20 +58,22 @@ Each module is split into two projects:
   pagination, cache/resilience markers. No business logic.
 - `BuildingBlocks.Infrastructure` — the mediator implementation, pipeline behaviors, Dapper/Redis
   primitives and health checks. It never references a module.
+- `BuildingBlocks.AspNetCore` — HTTP mapping (`Result`/`Error` → `IResult`, `{code,message,details}`)
+  shared by the module endpoint projects. It never references a module.
 
 ## Request flow
 
 ```
 HTTP request
   → middleware pipeline (exception handling, correlation, audit, auth, rate limit)
-  → Controller (Host)
+  → minimal API endpoint (Modules.X.Api)
   → ISender.Send(command/query)
   → mediator pipeline: Logging → Validation → Resilience → CacheInvalidation
   → module handler (Modules.X.Features)
   → repository port (Modules.X.Persistence)
   → Dapper repository (Modules.X.Infrastructure.Persistence) → SQL Server stored procedure
   → Result<T> / Error
-  → ResultHttpExtensions → { code, message, details } + status code
+  → BuildingBlocks.AspNetCore ResultHttpExtensions → { code, message, details } + status code
 ```
 
 ## Result pattern
@@ -76,7 +81,7 @@ HTTP request
 Results use **ResulTus 1.3.0**. A handler returns `Result<T>` (or `Result`). Failures carry a typed
 `Error` with a stable `Code`, a `Message` and an `ErrorType`.
 
-`Arquitectura.Host.Web.ResultHttpExtensions` maps results to HTTP:
+`BuildingBlocks.AspNetCore.ResultHttpExtensions` maps results to HTTP:
 
 - legacy codes keep their historical status (`NOT_FOUND` → 404, `VALIDATION_ERROR` → 400,
   `RETRY_EXHAUSTED` → 503, `TIMEOUT` → 504);

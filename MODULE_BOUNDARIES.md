@@ -9,6 +9,7 @@ rejected.
 ```
 Arquitectura.Host
   → Modules.*.Contracts.*            (DTOs, commands, queries)
+  → Modules.*.Api                    (only the MapXEndpoints extension)
   → Modules.*.Infrastructure         (only the AddXModule DI extension)
   → BuildingBlocks.*
   → Arquitectura.ServiceDefaults
@@ -21,7 +22,15 @@ Modules.X.Infrastructure
   → BuildingBlocks.Abstractions
   → BuildingBlocks.Infrastructure
 
+Modules.X.Api
+  → Modules.X
+  → BuildingBlocks.Abstractions
+  → BuildingBlocks.AspNetCore
+
 BuildingBlocks.Infrastructure
+  → BuildingBlocks.Abstractions
+
+BuildingBlocks.AspNetCore
   → BuildingBlocks.Abstractions
 
 BuildingBlocks.Abstractions
@@ -31,7 +40,10 @@ BuildingBlocks.Abstractions
 ## Forbidden dependencies
 
 - A module **must not** reference another `Modules.Y` assembly (directly or transitively through
-  another module).
+  another module). This includes its `Api` project.
+- A module's `Api` project may reference only its own module, `BuildingBlocks.Abstractions` and
+  `BuildingBlocks.AspNetCore`; it must not reference another module's `Api`, `Contracts` internals,
+  `Domain`, `Features` or `Persistence`.
 - A module **must not** reference `Arquitectura.Host`, `Arquitectura.Api`, or any legacy
   `Arquitectura.*` project.
 - `BuildingBlocks.*` **must not** reference a module or a legacy project.
@@ -53,15 +65,20 @@ A module never calls another module's handler, repository or service directly.
 
 ## Composition
 
-The Host is the only composition root. It calls the module DI extensions:
+The Host is the only composition root. It calls the module DI extensions and maps the module endpoints:
 
 ```csharp
 builder.Services.AddAuthModule(builder.Configuration);
 builder.Services.AddWeatherModule(builder.Configuration);
 builder.Services.AddDataTableModule(builder.Configuration);
+
+app.MapAuthEndpoints();
+app.MapWeatherEndpoints();
+app.MapDataTableEndpoints();
 ```
 
-A module's `AddXModule` is the only infrastructure type the Host is allowed to name.
+A module's `AddXModule` and `MapXEndpoints` are the only infrastructure/transport types the Host is
+allowed to name.
 
 ## Enforcement
 
@@ -70,7 +87,8 @@ The architecture test verifies, at the assembly level:
 - `Modules.Auth` references no `Modules.Weather` / `Modules.DataTable`;
 - `Modules.Weather` references no `Modules.Auth` / `Modules.DataTable`;
 - `Modules.DataTable` references no `Modules.Auth` / `Modules.Weather`;
-- `BuildingBlocks.Abstractions` and `BuildingBlocks.Infrastructure` reference no module and no legacy
-  project.
+- the same three checks for `Modules.*.Api`;
+- `BuildingBlocks.Abstractions`, `BuildingBlocks.AspNetCore` and `BuildingBlocks.Infrastructure`
+  reference no module and no legacy project.
 
 When a new module is added, extend `ModuleBoundaryTests` with the corresponding assertions.

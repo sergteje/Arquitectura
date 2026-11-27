@@ -9,10 +9,11 @@ Arquitectura.slnx
 │   ├── BuildingBlocks/
 │   │   ├── BuildingBlocks.Abstractions    # Mediator contracts, IDbConnectionFactory, IUnitOfWork,
 │   │   │                                  # IDistributedCacheService, ICurrentUser, Entity, Specification
+│   │   ├── BuildingBlocks.AspNetCore      # Result → IResult mapping ({code,message,details})
 │   │   └── BuildingBlocks.Infrastructure  # Mediator, behaviors, Dapper/Redis primitives, health checks
-│   ├── Modules/Auth/                      # Modules.Auth + Modules.Auth.Infrastructure
-│   ├── Modules/Weather/                   # Modules.Weather + Modules.Weather.Infrastructure
-│   ├── Modules/DataTable/                 # Modules.DataTable + Modules.DataTable.Infrastructure
+│   ├── Modules/Auth/                      # Modules.Auth + .Api + .Infrastructure
+│   ├── Modules/Weather/                   # Modules.Weather + .Api + .Infrastructure
+│   ├── Modules/DataTable/                 # Modules.DataTable + .Api + .Infrastructure
 │   ├── Arquitectura.ServiceDefaults       # OpenTelemetry, Serilog, health checks, service discovery
 │   ├── Arquitectura.Tests                 # xUnit v3: unit, architecture, endpoint
 │   └── Arquitectura.Database              # SQL Server project (tables + stored procedures)
@@ -59,21 +60,26 @@ docker compose up -d   # Host + SQL Server + Redis + observability
 ## Architecture Rules
 
 1. **One entry point**: only `Arquitectura.Host` composes modules. It may use `Modules.*.Contracts.*`,
-   the `AddXModule` DI extensions and the module `Infrastructure` project for composition only.
-2. **Contract boundary**: a module exposes DTOs and commands/queries in `Modules.X.Contracts`. Other
-   modules and the Host must not touch a module's `Domain`, `Features` or `Persistence`.
-3. **No shared domain**: each module owns its entities and repositories. No cross-module entity reuse.
-4. **No circular dependencies**: modules never reference each other; communication is through contracts
+   `Modules.*.Api` (`MapXEndpoints`), the `AddXModule` DI extensions and the module `Infrastructure`
+   project for composition only.
+2. **Contract boundary**: a module exposes DTOs and commands/queries in `Modules.X.Contracts` and its
+   Minimal API map in `Modules.X.Api`. Other modules and the Host must not touch a module's `Domain`,
+   `Features` or `Persistence`.
+3. **Minimal API**: endpoints live in `Modules.X.Api`, are grouped with `MapGroup`, and use
+   `BuildingBlocks.AspNetCore` (`ToHttpResult`, `ToNoContentResult`, `ErrorResponse`). Do not
+   reintroduce MVC controllers.
+4. **No shared domain**: each module owns its entities and repositories. No cross-module entity reuse.
+5. **No circular dependencies**: modules never reference each other; communication is through contracts
    or `BuildingBlocks` abstractions.
-5. **BuildingBlocks is business-free**: `Abstractions` has no package dependencies beyond ResulTus;
+6. **BuildingBlocks is business-free**: `Abstractions` has no package dependencies beyond ResulTus;
    `Infrastructure` never references a module.
-6. **Results**: use `ResulTus` (`Result`, `Result<T>`, `Error`, `ErrorType`). Do not reintroduce a
+7. **Results**: use `ResulTus` (`Result`, `Result<T>`, `Error`, `ErrorType`). Do not reintroduce a
    custom result type. Error bodies stay `{ code, message, details }`.
-7. **Caching**: explicit read-through via `QueryCachingExtensions.GetOrSetAsync`; never cache
+8. **Caching**: explicit read-through via `QueryCachingExtensions.GetOrSetAsync`; never cache
    non-round-trippable results.
-8. **Resilience**: only idempotent requests implement `IResilientRequest`.
-9. **Configuration**: Options-based, no hardcoded secrets. `Jwt:Key` is mandatory.
-10. **API docs**: OpenAPI at `/openapi/v1.json`, Scalar UI at `/scalar`. Do not reintroduce Swashbuckle.
+9. **Resilience**: only idempotent requests implement `IResilientRequest`.
+10. **Configuration**: Options-based, no hardcoded secrets. `Jwt:Key` is mandatory.
+11. **API docs**: OpenAPI at `/openapi/v1.json`, Scalar UI at `/scalar`. Do not reintroduce Swashbuckle.
 
 ## Persistence
 

@@ -5,7 +5,7 @@ Branch: `feature/modular-monolith` · Delivery: `single-pr` · Test runner: `dot
 
 ## Specs
 
-S1. Single backend entry point `Arquitectura.Host` (ASP.NET Core controllers). One API, one deployment. The Host only composes modules, registers middleware and hosts controllers.
+S1. Single backend entry point `Arquitectura.Host` (ASP.NET Core Minimal API). One API, one deployment. The Host only composes modules, registers middleware and maps the module endpoints.
 S2. Modules `Modules.Auth`, `Modules.Weather`, `Modules.DataTable`; each owns Domain, Features, Contracts, Persistence, Infrastructure and its own `AddXModule` DI registration.
 S3. A module never references another module's internals. Inter-module communication only through `*.Contracts` (facades + DTOs) and BuildingBlocks abstractions.
 S4. `BuildingBlocks.Abstractions` holds technical shared contracts with no package dependencies (mediator contracts, `ICurrentUser`, `IDbConnectionFactory`, `IUnitOfWork`, `IDistributedCacheService`, `Entity`, `Specification`, pagination).
@@ -13,7 +13,7 @@ S5. `BuildingBlocks.Infrastructure` holds the mediator implementation, pipeline 
 S6. `Domain` never references Dapper, SqlClient, ASP.NET Core or the mediator implementation. `Application` (Features) never references Persistence implementations.
 S7. Result Pattern replaced by ResulTus 1.3.0 (`Result`, `Result<T>`, `Error`, `ErrorType`). The previous hand-rolled `Result`/`ResultError`/`ServiceErrors`/`ResultExtensions` are removed.
 S8. MediatR replaced by a first-party lightweight mediator supporting commands, queries, handlers, pipeline behaviors, validation, logging, caching, resilience, `CancellationToken` and async execution.
-S9. Preserved: .NET 11, ASP.NET Core Controllers, React + TypeScript + Vite, SQL Server + Dapper + stored procedures, Redis, Hangfire, FluentValidation, Mapster, JWT, OpenTelemetry, health checks, Serilog, Aspire.
+S9. Preserved: .NET 11, ASP.NET Core Minimal API, React + TypeScript + Vite, SQL Server + Dapper + stored procedures, Redis, Hangfire, FluentValidation, Mapster, JWT, OpenTelemetry, health checks, Serilog, Aspire.
 S10. All existing HTTP endpoints keep method, route, auth requirements, request and success-response shapes, and status codes:
 - `POST /api/auth/login` (anonymous) → 200 `AuthResponse`
 - `POST /api/auth/register` (anonymous) → 201 `AuthResponse`
@@ -105,3 +105,12 @@ L8 Cleanup of remaining debt (user request, one by one):
 6. `/health` and `/alive` are mapped in every environment (aggregate status only).
 7. Upgraded `MessagePack` to 3.1.12 (advisory gone) and replaced the obsolete Aspire `AddProject<T>` with `AddDotnetProject(name, path)`.
 Verification: `dotnet build Arquitectura.Cli.slnf -c Release` 0 errors/0 warnings; `dotnet test -c Release` 66/66.
+
+L9 Minimal API per module (user request, verbatim): "Me gustaría en esta rama cambiar de controladores a minimalapi cómo sería de factible?" / "Adelante con endpoints por modulo".
+- Added `BuildingBlocks.AspNetCore` with `ErrorResponse` and `ResultHttpExtensions.ToHttpResult`/`ToNoContentResult`/`ToErrorResult` (`IResult`).
+- Added `Modules.Auth.Api`, `Modules.Weather.Api` and `Modules.DataTable.Api`, each exposing `MapXEndpoints`.
+- Host: removed `AddControllers`/`MapControllers` and the controllers; maps the three endpoint groups. `AddOpenApi`/`MapOpenApi`/Scalar unchanged.
+- `GlobalExceptionHandler` now maps `BadHttpRequestException` to 400.
+- Architecture tests extended to cover the `*.Api` assemblies.
+- HTTP contract preserved (paths, auth, shapes, `{code,message,details}`, status codes).
+Verification: `dotnet build Arquitectura.Cli.slnf -c Release` 0 errors/0 warnings; `dotnet test -c Release` 70/70.

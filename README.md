@@ -5,7 +5,7 @@
 ## Tech Stack
 
 ### Backend
-- .NET 11 (ASP.NET Core Controllers) + Aspire for local orchestration
+- .NET 11 (ASP.NET Core Minimal API) + Aspire for local orchestration
 - Modular monolith: `Auth`, `Weather`, `DataTable` modules over shared `BuildingBlocks`
 - First-party lightweight mediator (commands, queries, pipeline behaviors)
 - [ResulTus 1.3.0](https://www.nuget.org/packages/ResulTus) result pattern
@@ -87,11 +87,12 @@ Arquitectura/
 ├── Arquitectura.Host/                 # Single ASP.NET Core entry point (composition root)
 ├── BuildingBlocks/
 │   ├── BuildingBlocks.Abstractions/   # Shared technical contracts (mediator, persistence, caching, identity)
+│   ├── BuildingBlocks.AspNetCore/     # Result → IResult mapping ({code,message,details})
 │   └── BuildingBlocks.Infrastructure/ # Mediator, behaviors, Dapper/Redis primitives, health checks
 ├── Modules/
-│   ├── Auth/                          # Modules.Auth + Modules.Auth.Infrastructure
-│   ├── Weather/                       # Modules.Weather + Modules.Weather.Infrastructure
-│   └── DataTable/                     # Modules.DataTable + Modules.DataTable.Infrastructure
+│   ├── Auth/                          # Modules.Auth + Modules.Auth.Api + Modules.Auth.Infrastructure
+│   ├── Weather/                       # Modules.Weather + Modules.Weather.Api + Modules.Weather.Infrastructure
+│   └── DataTable/                     # Modules.DataTable + Modules.DataTable.Api + Modules.DataTable.Infrastructure
 ├── Arquitectura.ServiceDefaults/      # Aspire defaults, OpenTelemetry, Serilog, health
 ├── Arquitectura.AppHost/              # Aspire orchestration → Arquitectura.Host
 ├── Arquitectura.Database/             # SQL Server project (tables, stored procedures)

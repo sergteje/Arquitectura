@@ -13,6 +13,7 @@ Consequences**.
 | ADR-006 | Preserve error body and status mapping | Accepted |
 | ADR-007 | Fix pre-existing defects as part of the move | Accepted |
 | ADR-008 | Missing `sp_DeleteUserTableConfig` documented, later added | Resolved |
+| ADR-009 | Minimal API endpoints owned by each module | Accepted |
 
 ---
 
@@ -148,3 +149,26 @@ values in `UserTablePreferencesHistory` with `ChangeType = 'DELETE'` before dele
 **Consequences.** `DELETE /api/datatable/{tableKey}/config` works once the database is deployed. The
 procedure still requires a SQL deployment (Visual Studio / `sqlpackage`); it is excluded from the CLI
 solution filter.
+
+---
+
+## ADR-009 — Minimal API endpoints owned by each module
+
+**Context.** The first iteration hosted MVC controllers in `Arquitectura.Host`. That kept the modules
+framework-free, but it concentrated all routing in the Host and required `IActionResult` mapping that
+only the Host could use. The team wants Minimal API and wants each module to own its HTTP surface.
+
+**Decision.** Add a `Modules.X.Api` project per module. It references its own module,
+`BuildingBlocks.Abstractions` and a new `BuildingBlocks.AspNetCore` project that maps
+`Result`/`Error` to `IResult` while preserving `{ code, message, details }`. Each `Api` project exposes
+`MapXEndpoints(this IEndpointRouteBuilder)`; the Host only calls the three maps. Controllers and the
+Host-local mapper were removed.
+
+**Consequences.**
+
+- The HTTP surface lives next to the module that owns it; the Host stays a thin composition root.
+- Module boundary tests now also assert that `Modules.*.Api` assemblies never reference another module.
+- Minimal API binding is explicit (`[FromQuery]`, nullable query parameters with defaults); there are no
+  MVC conventions to rely on.
+- OpenAPI/Scalar continue to work through `AddOpenApi()`/`MapOpenApi()`, with `.Produces<T>()` metadata.
+- The error body and status mapping are unchanged because they moved to `BuildingBlocks.AspNetCore`.
