@@ -89,3 +89,9 @@ L6 Tests and solution state:
 - All 17 `.csproj` build with 0 errors; `Arquitectura.Host` and `Arquitectura.Tests` build with 0 warnings.
 - `dotnet build Arquitectura.slnx` cannot succeed because `Arquitectura.Database.sqlproj` needs VS SSDT (pre-existing; documented in `DEPLOYMENT.md`/`TECHNICAL_DEBT.md`).
 - Not yet committed: the working tree holds the whole migration; commit as reviewable work units on `feature/modular-monolith`.
+
+L7 Scalar (user request): replaced Swashbuckle with native OpenAPI + Scalar.
+- Removed `Swashbuckle.AspNetCore`; added `Microsoft.AspNetCore.OpenApi` 11.0.0 and `Scalar.AspNetCore` 3.3.0 (supports net11.0).
+- Host: `AddOpenApi()` + `MapOpenApi()` + `MapScalarApiReference()`. OpenAPI at `/openapi/v1.json`, UI at `/scalar`.
+- Exempted `/scalar` and `/openapi` from the API-key and audit middlewares; `launchUrl` now `scalar`.
+- Smoke test updated: `/openapi/v1.json` 200 and `/scalar` 200 text/html. 59 tests pass.

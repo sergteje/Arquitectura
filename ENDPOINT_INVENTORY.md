@@ -4,7 +4,7 @@ The HTTP contract is frozen. Method, route, auth requirement, request shape, suc
 status must not change without updating this document and the frontend.
 
 | Method | Route | Auth | Request | Success |
-|--------|-------|------|---------|---------|
+|        |       |      |         |         |
 | POST | `/api/auth/login` | anonymous | `LoginRequest` | 200 `AuthResponse` |
 | POST | `/api/auth/register` | anonymous | `RegisterRequest` | 201 `AuthResponse` |
 | POST | `/api/auth/refresh` | bearer | `RefreshTokenRequest` | 200 `RefreshTokenResponse` |
@@ -21,18 +21,20 @@ status must not change without updating this document and the frontend.
 | POST | `/api/datatable/{tableKey}/export` | bearer | `DataTableExportRequestDto` | 202 `DataTableExportResponseDto` |
 | GET | `/health` | anonymous | — | 200 (Development only) |
 | GET | `/alive` | anonymous | — | 200 (Development only) |
+| GET | `/openapi/v1.json` | anonymous | — | 200 OpenAPI document |
+| GET | `/scalar` | anonymous | — | 200 Scalar API reference UI |
 
 Notes:
 
-- ASP.NET routing is case-insensitive; the canonical Swagger case is `api/Auth`, `api/WeatherForecast`,
+  ASP.NET routing is case insensitive; the canonical Swagger case is `api/Auth`, `api/WeatherForecast`,
   `api/DataTable`. The lowercase forms above are what the frontend uses.
-- `GET /health` includes SQL Server, database, Hangfire and Redis checks. `GET /alive` only runs the
-  `live`-tagged self check.
-- Errors keep the body `{ "code": string, "message": string, "details": object|null }`. Status mapping:
+  `GET /health` includes SQL Server, database, Hangfire and Redis checks. `GET /alive` only runs the
+  `live` tagged self check.
+  Errors keep the body `{ "code": string, "message": string, "details": object|null }`. Status mapping:
   400 validation/failure, 401 unauthorized, 403 forbidden, 404 not found, 409 conflict, 429 rate limited,
   503 service unavailable (`RETRY_EXHAUSTED`), 504 timeout.
-- Rate limiting uses the fixed window policy `fixed` (100 requests/minute) on all `/api` controllers.
-- A 429 response uses the historical ProblemDetails-like body with `retryAfter`.
+  Rate limiting uses the fixed window policy `fixed` (100 requests/minute) on all `/api` controllers.
+  A 429 response uses the historical ProblemDetails like body with `retryAfter`.
 
 Frontend coupling: `Arquitectura.Client/src/lib/constants.ts` sets `API_BASE`; the data table client
 reads `error.message` from the error body. Both are satisfied by this contract.

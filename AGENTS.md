@@ -30,7 +30,7 @@ solution**. They are superseded by the tree above and can be deleted once the mi
 ### Backend
 ```powershell
 dotnet build Arquitectura.Host/Arquitectura.Host.csproj
-dotnet run --project Arquitectura.Host          # https://localhost:44358, Swagger at /swagger
+dotnet run --project Arquitectura.Host          # https://localhost:44358, Scalar at /scalar
 dotnet run --project Arquitectura.AppHost       # Aspire dashboard, orchestrates Host + Client
 ```
 
@@ -72,6 +72,7 @@ docker compose up -d   # Host + SQL Server + Redis + observability
    non-round-trippable results.
 8. **Resilience**: only idempotent requests implement `IResilientRequest`.
 9. **Configuration**: Options-based, no hardcoded secrets. `Jwt:Key` is mandatory.
+10. **API docs**: OpenAPI at `/openapi/v1.json`, Scalar UI at `/scalar`. Do not reintroduce Swashbuckle.
 
 ## Persistence
 
@@ -96,6 +97,7 @@ docker compose up -d   # Host + SQL Server + Redis + observability
 | Jaeger | 16686 | Docker |
 | Grafana | 3000 | Docker (admin/admin123) |
 | Hangfire | /hangfire | Development only |
+| Scalar | /scalar | API reference UI |
 
 ## Frontend
 
