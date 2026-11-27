@@ -12,11 +12,15 @@
   <Project Path="Arquitectura.ServiceDefaults/Arquitectura.ServiceDefaults.csproj" />
   <Project Path="Arquitectura.Tests/Arquitectura.Tests.csproj" />
   <Project Path="BuildingBlocks/BuildingBlocks.Abstractions/BuildingBlocks.Abstractions.csproj" />
+  <Project Path="BuildingBlocks/BuildingBlocks.AspNetCore/BuildingBlocks.AspNetCore.csproj" />
   <Project Path="BuildingBlocks/BuildingBlocks.Infrastructure/BuildingBlocks.Infrastructure.csproj" />
   <Project Path="Modules/Auth/Modules.Auth/Modules.Auth.csproj" />
+  <Project Path="Modules/Auth/Modules.Auth.Api/Modules.Auth.Api.csproj" />
   <Project Path="Modules/Auth/Modules.Auth.Infrastructure/Modules.Auth.Infrastructure.csproj" />
   <Project Path="Modules/DataTable/Modules.DataTable/Modules.DataTable.csproj" />
+  <Project Path="Modules/DataTable/Modules.DataTable.Api/Modules.DataTable.Api.csproj" />
   <Project Path="Modules/DataTable/Modules.DataTable.Infrastructure/Modules.DataTable.Infrastructure.csproj" />
   <Project Path="Modules/Weather/Modules.Weather/Modules.Weather.csproj" />
+  <Project Path="Modules/Weather/Modules.Weather.Api/Modules.Weather.Api.csproj" />
   <Project Path="Modules/Weather/Modules.Weather.Infrastructure/Modules.Weather.Infrastructure.csproj" />
 </Solution>
