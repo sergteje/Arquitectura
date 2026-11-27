@@ -9,8 +9,11 @@ using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Modules.Auth.Api;
 using Modules.Auth.Infrastructure.DependencyInjection;
+using Modules.DataTable.Api;
 using Modules.DataTable.Infrastructure.DependencyInjection;
+using Modules.Weather.Api;
 using Modules.Weather.Infrastructure.DependencyInjection;
 using Modules.Weather.Infrastructure.Jobs;
 using Scalar.AspNetCore;
@@ -99,7 +102,6 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddResponseCaching();
-builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -180,7 +182,9 @@ app.UseAuditTrail();
 app.UseRequestResponseLogging();
 app.UseExceptionHandler();
 
-app.MapControllers();
+app.MapAuthEndpoints();
+app.MapWeatherEndpoints();
+app.MapDataTableEndpoints();
 app.MapOpenApi();
 app.MapScalarApiReference();
 app.MapDefaultEndpoints();

@@ -34,6 +34,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         var statusCode = exception switch
         {
             ArgumentException => StatusCodes.Status400BadRequest,
+            BadHttpRequestException => StatusCodes.Status400BadRequest,
             KeyNotFoundException => StatusCodes.Status404NotFound,
             UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
             InvalidOperationException => StatusCodes.Status409Conflict,
@@ -44,6 +45,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         var title = exception switch
         {
             ArgumentException => "Bad Request",
+            BadHttpRequestException => "Bad Request",
             KeyNotFoundException => "Not Found",
             UnauthorizedAccessException => "Unauthorized",
             InvalidOperationException => "Conflict",
