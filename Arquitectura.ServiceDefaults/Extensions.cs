@@ -8,6 +8,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using ResulTus.Diagnostics;
 using Serilog;
+using Serilog.Events;
 using Serilog.Extensions.Logging;
 
 namespace Microsoft.Extensions.Hosting;
@@ -105,6 +106,9 @@ public static class Extensions
 
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
+                // Serilog ignores Logging:LogLevel from appsettings, so ASP.NET Core's per-request
+                // chatter (request starting/finished, endpoint executed, status set) is silenced here.
+                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("Application", builder.Environment.ApplicationName)
                 // Seq's own sink speaks CLEF over HTTP. Its OTLP ingest aborted the OTLP sink's
