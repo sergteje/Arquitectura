@@ -1,146 +1,126 @@
 # Arquitectura
 
-> ⚠️ **This is a starting point** — this project is under active development. Features, structure, and patterns may change.
-
-Modern full-stack application with .NET 10 Aspire, React 19, and Clean Architecture.
+> **Work in progress.** A production-minded reference application that demonstrates a **modular monolith** on **.NET 11**, with a React 19 frontend.
 
 ## Tech Stack
 
 ### Backend
-- .NET 10 (Aspire)
-- CQRS/MediatR
-- Dapper + SQL Server
-- JWT Authentication
-- Redis Cache
-- Polly Resilience
-- Hangfire
+- .NET 11 (ASP.NET Core Controllers) + Aspire for local orchestration
+- Modular monolith: `Auth`, `Weather`, `DataTable` modules over shared `BuildingBlocks`
+- First-party lightweight mediator (commands, queries, pipeline behaviors)
+- [ResulTus 1.3.0](https://www.nuget.org/packages/ResulTus) result pattern
+- Dapper + SQL Server (stored procedures)
+- JWT bearer authentication
+- Redis distributed cache
+- Polly resilience, FluentValidation, Mapster
+- Hangfire background jobs
+- OpenTelemetry, health checks, Serilog
 
 ### Frontend
-- React 19
-- Vite
-- TypeScript
-- Zustand
-- TanStack Query
+- React 19, Vite, TypeScript
+- Zustand, TanStack Query
 - shadcn/ui
 
 ### Infrastructure
 - Docker + Docker Compose
-- SQL Server
-- Redis
-- Jaeger (Observability)
-- Seq (Logs)
-- Prometheus + Grafana
+- SQL Server, Redis
+- Jaeger (tracing), Seq (logs), Prometheus + Grafana
 
 ## Getting Started
 
 ### Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 11 SDK](https://dotnet.microsoft.com/download/dotnet/11.0)
 - [Node.js 20+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
 
 ### Quick Start (Docker)
 
 ```bash
-# 1. Copy environment template
 cp .env.example .env
-
-# 2. Start all services
 docker compose up -d
-
-# 3. Open in browser
-# API:      http://localhost:8080
-# Frontend:  http://localhost:5173
-# Seq:      http://localhost:5341
-# Jaeger:   http://localhost:16686
-# Grafana:  http://localhost:3000 (admin/admin123)
 ```
 
-### Local Development (No Docker)
+| Service | URL |
+|---------|-----|
+| API | http://localhost:8080 |
+| Frontend | http://localhost:5173 |
+| Seq | http://localhost:5341 |
+| Jaeger | http://localhost:16686 |
+| Grafana | http://localhost:3000 (admin/admin123) |
 
-#### Backend
-
-```bash
-# Restore and build
-dotnet build
-
-# Run API (uses User Secrets)
-cd Arquitectura.Api
-dotnet run
-# API: https://localhost:44358
-```
-
-#### Frontend
+### Local Development (no Docker)
 
 ```bash
+# Backend
+dotnet build Arquitectura.slnx
+dotnet run --project Arquitectura.Host
+# API: https://localhost:44358 (Swagger at /swagger)
+
+# Frontend
 cd Arquitectura.Client
 npm install
 npm run dev
-# Frontend: http://localhost:5173
 ```
 
-### Setting up User Secrets (Local Development)
+### Configuration / User Secrets
+
+Secrets are never hardcoded. Configure them through `appsettings`, environment variables or user secrets:
 
 ```bash
-cd Arquitectura.Api
-
-# Set database connection
+cd Arquitectura.Host
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,1433;Database=Arquitectura;User Id=sa;Password=YOUR_PASSWORD;TrustServerCertificate=True"
-
-# Set JWT key
 dotnet user-secrets set "Jwt:Key" "your-super-secret-key-min-32-chars-long!"
 dotnet user-secrets set "Jwt:Issuer" "Arquitectura"
 dotnet user-secrets set "Jwt:Audience" "ArquitecturaClients"
 ```
 
+`Jwt:Key` is mandatory: the host refuses to start without it. `ApiKey:Key` is only required in Production.
+
 ## Project Structure
 
 ```
 Arquitectura/
-├── Arquitectura.Api/           # Web API (entrypoint)
-├── Arquitectura.Application/   # MediatR handlers, CQRS
-├── Arquitectura.Domain/       # Entities, Domain logic
-├── Arquitectura.Infrastructure# Auth, Cache, Middleware
-├── Arquitectura.Persistence # Dapper repos, SQL
-├── Arquitectura.ServiceDefaults
-├── Arquitectura.Tests/        # xUnit tests
-├── Arquitectura.Database/     # EF Core migrations
-├── Arquitectura.AppHost/      # Aspire hosting
-├── Arquitectura.Client/        # React frontend
-└── docker-compose.yml       # Full stack
+├── Arquitectura.Host/                 # Single ASP.NET Core entry point (composition root)
+├── BuildingBlocks/
+│   ├── BuildingBlocks.Abstractions/   # Shared technical contracts (mediator, persistence, caching, identity)
+│   └── BuildingBlocks.Infrastructure/ # Mediator, behaviors, Dapper/Redis primitives, health checks
+├── Modules/
+│   ├── Auth/                          # Modules.Auth + Modules.Auth.Infrastructure
+│   ├── Weather/                       # Modules.Weather + Modules.Weather.Infrastructure
+│   └── DataTable/                     # Modules.DataTable + Modules.DataTable.Infrastructure
+├── Arquitectura.ServiceDefaults/      # Aspire defaults, OpenTelemetry, Serilog, health
+├── Arquitectura.AppHost/              # Aspire orchestration → Arquitectura.Host
+├── Arquitectura.Database/             # SQL Server project (tables, stored procedures)
+├── Arquitectura.Client/               # React frontend
+└── Arquitectura.Tests/                # Unit, integration, architecture and endpoint tests
 ```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md), [MODULE_BOUNDARIES.md](MODULE_BOUNDARIES.md) and [ADR/](ADR/) for the design rationale.
 
 ## Architecture Notes
 
-- **CQRS**: Vertical Slice with MediatR
-- **Persistence**: Dapper with Stored Procedures
-- **Auth**: JWT Bearer tokens
-- **Caching**: Redis + MemoryCache
-- **Resilience**: Polly (retry, circuit breaker)
+- **Modular monolith**: one deployable, modules with hard boundaries and their own persistence.
+- **CQRS via a first-party mediator**: commands and queries, pipeline behaviors for logging, validation, resilience and cache invalidation.
+- **Persistence**: Dapper over stored procedures; modules own their SQL.
+- **Results**: `ResulTus` `Result`/`Result<T>` with a typed `Error`; HTTP mapping preserves the `{ code, message, details }` body.
+- **Caching**: explicit read-through (`QueryCachingExtensions.GetOrSetAsync`) instead of a behavior, because `Result<T>` is not serializable.
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|---------|------------|
-| POST | `/api/auth/login` | Login |
-| POST | `/api/auth/register` | Register |
-| GET | `/api/weatherforecast` | Get forecasts |
-| POST | `/api/weatherforecast` | Create forecast |
-| PUT | `/api/weatherforecast/{id}` | Update forecast |
-| DELETE | `/api/weatherforecast/{id}` | Delete forecast |
+See [ENDPOINT_INVENTORY.md](ENDPOINT_INVENTORY.md) for the full, authoritative list.
 
 ## Testing
 
 ```bash
-# Backend tests
-dotnet test
-
-# API integration tests (requires running API)
-./test-api.ps1
-
-# Auth tests
-./test-auth.ps1
+dotnet test Arquitectura.Tests/Arquitectura.Tests.csproj
 ```
+
+Covers unit tests (handlers, validators, caching, result mapping), architecture tests (module isolation) and endpoint smoke tests.
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md). Known technical debt is tracked in [TECHNICAL_DEBT.md](TECHNICAL_DEBT.md).
 
 ## License
 
