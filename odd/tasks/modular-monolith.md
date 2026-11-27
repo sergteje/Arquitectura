@@ -114,3 +114,13 @@ L9 Minimal API per module (user request, verbatim): "Me gustaría en esta rama c
 - Architecture tests extended to cover the `*.Api` assemblies.
 - HTTP contract preserved (paths, auth, shapes, `{code,message,details}`, status codes).
 Verification: `dotnet build Arquitectura.Cli.slnf -c Release` 0 errors/0 warnings; `dotnet test -c Release` 70/70.
+
+L10 Build hygiene and package refresh (user request):
+- Added `Directory.Build.props` (TFM/net11, Nullable, ImplicitUsings, LangVersion, deterministic for `.csproj` only), `Directory.Packages.props` (Central Package Management) and `global.json` (SDK 11.0.100 + `Microsoft.Testing.Platform` runner).
+- Removed every `Version` and `TargetFramework`/`Nullable`/`ImplicitUsings` duplication from the `.csproj` files.
+- Updated packages: FluentValidation 12.2.0, Mapster 10.0.14, Microsoft.Extensions.Http.Resilience/ServiceDiscovery 11.0.1, OpenTelemetry 1.21.0, Serilog 4.4.0, Serilog.Extensions.* 11.0.0, Serilog.Sinks.OpenTelemetry 4.3.0, coverlet 10.1.1, FluentAssertions 8.11.0, Microsoft.NET.Test.Sdk 18.12.0, Moq 4.21.0, xunit.v3 4.0.3.
+- xunit v3 4.x moved to Microsoft.Testing.Platform; opted in through `global.json`. `dotnet test` and `dotnet test --project` both pass 70/70.
+- Migrated `Arquitectura.AppHost` from the obsolete `Aspire.AppHost.Sdk` to `Microsoft.NET.Sdk` + `Aspire.Hosting.AppHost`/`Aspire.Hosting.Dotnet` (removes ASPIRE012; `MessagePack` no longer needed).
+- `Arquitectura.slnx` now uses solution folders (`Backend/Host`, `Backend/BuildingBlocks`, `Backend/Modules/*`, `Backend/Tests`, `Infrastructure`, `Frontend`). Solution folders are VS organization only; DLLs and deployment are unchanged.
+- Fixed `CA2264` in `ResultHttpExtensions.ToErrorResult` (ResulTus `Error` is a struct).
+Verification: Release build 0 errors/0 warnings; `dotnet test` 70/70; E2E 11/11.

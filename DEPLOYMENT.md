@@ -50,9 +50,13 @@ secret manager. Never commit secrets.
 # CLI build: excludes the SQL project and the frontend esproj
 dotnet build Arquitectura.Cli.slnf -c Release
 
-# Tests
+# Tests (xunit v3 4.x runs on Microsoft.Testing.Platform via global.json)
 dotnet test Arquitectura.Tests/Arquitectura.Tests.csproj -c Release
 ```
+
+Package versions are centralized in `Directory.Packages.props` (Central Package Management) and the
+SDK is pinned in `global.json`. Deploy **one** artifact: the `Arquitectura.Host` publish output or the
+container image; the module assemblies ship inside it.
 
 `Arquitectura.slnx` is the full Visual Studio solution and includes `Arquitectura.Database.sqlproj`,
 which requires SSDT. Use `Arquitectura.Cli.slnf` on machines without Visual Studio.

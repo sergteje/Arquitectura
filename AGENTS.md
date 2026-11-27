@@ -57,6 +57,17 @@ cd Arquitectura.Client; npm run test:e2e
 docker compose up -d   # Host + SQL Server + Redis + observability
 ```
 
+## Build & Packages
+
+- `Directory.Build.props` centralizes `TargetFramework` (net11.0), `Nullable`, `ImplicitUsings`,
+  `LangVersion` and deterministic builds for every C# project.
+- `Directory.Packages.props` enables **Central Package Management**. Never add a `Version` to a
+  `PackageReference`; update the version in the central file instead.
+- `global.json` pins SDK `11.0.100` and enables the `Microsoft.Testing.Platform` runner (xunit v3 4.x).
+- `Arquitectura.slnx` groups projects into solution folders (`Backend/Host`, `Backend/BuildingBlocks`,
+  `Backend/Modules/*`, `Backend/Tests`, `Infrastructure`, `Frontend`). This is Visual Studio
+  organization only; it does not move DLLs or change deployment.
+
 ## Architecture Rules
 
 1. **One entry point**: only `Arquitectura.Host` composes modules. It may use `Modules.*.Contracts.*`,

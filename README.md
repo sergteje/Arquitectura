@@ -84,6 +84,9 @@ dotnet user-secrets set "Jwt:Audience" "ArquitecturaClients"
 
 ```
 Arquitectura/
+├── Directory.Build.props              # Shared TFM, Nullable, ImplicitUsings, LangVersion
+├── Directory.Packages.props           # Central Package Management (single source of versions)
+├── global.json                        # Pins SDK 11.0.100 and enables the MTP test runner
 ├── Arquitectura.Host/                 # Single ASP.NET Core entry point (composition root)
 ├── BuildingBlocks/
 │   ├── BuildingBlocks.Abstractions/   # Shared technical contracts (mediator, persistence, caching, identity)
@@ -102,6 +105,19 @@ Arquitectura/
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [MODULE_BOUNDARIES.md](MODULE_BOUNDARIES.md) and [ADR/](ADR/) for the design rationale.
+
+## Build & Packages
+
+- **Central Package Management**: all NuGet versions live in `Directory.Packages.props`. Project files
+  contain `<PackageReference Include="X" />` without a `Version`.
+- **`Directory.Build.props`** sets `net11.0`, `Nullable`, `ImplicitUsings` and `LangVersion` once for
+  every C# project.
+- **`global.json`** pins the SDK and enables `Microsoft.Testing.Platform` (xunit v3 4.x).
+- **Solution folders** in `Arquitectura.slnx` group the projects (`Backend/Host`,
+  `Backend/BuildingBlocks`, `Backend/Modules/*`, `Backend/Tests`, `Infrastructure`, `Frontend`).
+  They are a Visual Studio organization aid only; they do not move DLLs or change deployment.
+- In a modular monolith you deploy **one** artifact: `dotnet publish Arquitectura.Host` (or the Docker
+  image). Module assemblies travel inside that publish folder; they are not deployed individually.
 
 ## Architecture Notes
 
